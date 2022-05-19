@@ -255,20 +255,24 @@ def ConvNeXtBlock(
     x = inputs
 
     x = layers.Conv2D(
-      filters=projection_dim, kernel_size=7, padding="same",
-      groups=projection_dim, name=name + "_depthwise_conv")(x)
-    x = layers.LayerNormalization(epsilon=1e-6, name=name + "_layernorm")(x)
-    x = layers.Dense(4 * projection_dim, name=name + "_pointwise_conv_1")(x)
-    x = layers.Activation("gelu", name=name + "_gelu")(x)
-    x = layers.Dense(projection_dim, name=name + "_pointwise_conv_2")(x)
+        filters=projection_dim,
+        kernel_size=7,
+        padding="same",
+        groups=projection_dim,
+        name=f"{name}_depthwise_conv",
+    )(x)
+    x = layers.LayerNormalization(epsilon=1e-6, name=f"{name}_layernorm")(x)
+    x = layers.Dense(4 * projection_dim, name=f"{name}_pointwise_conv_1")(x)
+    x = layers.Activation("gelu", name=f"{name}_gelu")(x)
+    x = layers.Dense(projection_dim, name=f"{name}_pointwise_conv_2")(x)
 
     if layer_scale_init_value is not None:
-      x = LayerScale(layer_scale_init_value, projection_dim,
-        name=name + "_layer_scale")(x)
+      x = LayerScale(
+          layer_scale_init_value, projection_dim, name=f"{name}_layer_scale")(x)
     if drop_path_rate:
-      layer = StochasticDepth(drop_path_rate, name=name + "_stochastic_depth")
+      layer = StochasticDepth(drop_path_rate, name=f"{name}_stochastic_depth")
     else:
-      layer = layers.Activation("linear", name=name + "_identity")
+      layer = layers.Activation("linear", name=f"{name}_identity")
 
     return inputs + layer(x)
   return apply
@@ -288,9 +292,9 @@ def PreStem(name=None):
 
   def apply(x):
     x = layers.Normalization(
-      mean=[0.485 * 255, 0.456 * 255, 0.406 * 255],
-      variance=[(0.229 * 255) ** 2, (0.224 * 255) ** 2, (0.225 * 255) ** 2],
-      name=name + "_prestem_normalization"
+        mean=[0.485 * 255, 0.456 * 255, 0.406 * 255],
+        variance=[(0.229 * 255)**2, (0.224 * 255)**2, (0.225 * 255)**2],
+        name=f"{name}_prestem_normalization",
     )(x)
     return x
 
@@ -311,10 +315,9 @@ def Head(num_classes=1000, name=None):
     name = str(backend.get_uid("head"))
 
   def apply(x):
-    x = layers.GlobalAveragePooling2D(name=name + "_head_gap")(x)
-    x = layers.LayerNormalization(
-      epsilon=1e-6, name=name + "_head_layernorm")(x)
-    x = layers.Dense(num_classes, name=name + "_head_dense")(x)
+    x = layers.GlobalAveragePooling2D(name=f"{name}_head_gap")(x)
+    x = layers.LayerNormalization(epsilon=1e-6, name=f"{name}_head_layernorm")(x)
+    x = layers.Dense(num_classes, name=f"{name}_head_dense")(x)
     return x
 
   return apply
@@ -404,11 +407,8 @@ def ConvNeXt(depths,
   if input_tensor is None:
     img_input = layers.Input(shape=input_shape)
   else:
-    if not backend.is_keras_tensor(input_tensor):
-      img_input = layers.Input(tensor=input_tensor, shape=input_shape)
-    else:
-      img_input = input_tensor
-
+    img_input = (input_tensor if backend.is_keras_tensor(input_tensor) else
+                 layers.Input(tensor=input_tensor, shape=input_shape))
   if input_tensor is not None:
     inputs = utils.layer_utils.get_source_inputs(input_tensor)
   else:
@@ -423,31 +423,37 @@ def ConvNeXt(depths,
 
   # Stem block.
   stem = sequential.Sequential(
-    [
-      layers.Conv2D(projection_dims[0], kernel_size=4, strides=4,
-        name=model_name + "_stem_conv"),
-      layers.LayerNormalization(
-              epsilon=1e-6,
-              name=model_name + "_stem_layernorm"
-      ),
-    ],
-    name=model_name + "_stem",
+      [
+          layers.Conv2D(
+              projection_dims[0],
+              kernel_size=4,
+              strides=4,
+              name=f"{model_name}_stem_conv",
+          ),
+          layers.LayerNormalization(
+              epsilon=1e-6, name=f"{model_name}_stem_layernorm"),
+      ],
+      name=f"{model_name}_stem",
   )
 
   # Downsampling blocks.
-  downsample_layers = []
-  downsample_layers.append(stem)
-
+  downsample_layers = [stem]
   num_downsample_layers = 3
   for i in range(num_downsample_layers):
     downsample_layer = sequential.Sequential(
-      [
-        layers.LayerNormalization(epsilon=1e-6,
-          name=model_name + "_downsampling_layernorm_" + str(i)),
-        layers.Conv2D(projection_dims[i + 1], kernel_size=2, strides=2,
-          name=model_name + "_downsampling_conv_" + str(i)),
-      ],
-      name=model_name + "_downsampling_block_" + str(i),
+        [
+            layers.LayerNormalization(
+                epsilon=1e-6,
+                name=f"{model_name}_downsampling_layernorm_{str(i)}",
+            ),
+            layers.Conv2D(
+                projection_dims[i + 1],
+                kernel_size=2,
+                strides=2,
+                name=f"{model_name}_downsampling_conv_{str(i)}",
+            ),
+        ],
+        name=f"{model_name}_downsampling_block_{str(i)}",
     )
     downsample_layers.append(downsample_layer)
 
@@ -466,10 +472,10 @@ def ConvNeXt(depths,
     x = downsample_layers[i](x)
     for j in range(depths[i]):
       x = ConvNeXtBlock(
-        projection_dim=projection_dims[i],
-        drop_path_rate=depth_drop_rates[cur + j],
-        layer_scale_init_value=layer_scale_init_value,
-        name=model_name + f"_stage_{i}_block_{j}",
+          projection_dim=projection_dims[i],
+          drop_path_rate=depth_drop_rates[cur + j],
+          layer_scale_init_value=layer_scale_init_value,
+          name=f"{model_name}_stage_{i}_block_{j}",
       )(x)
     cur += depths[i]
 

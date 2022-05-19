@@ -43,8 +43,7 @@ class BidirectionalLSTMBenchmark(tf.test.Benchmark):
             x)
     x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64))(x)
     outputs = tf.keras.layers.Dense(1, activation='sigmoid')(x)
-    model = tf.keras.Model(inputs, outputs)
-    return model
+    return tf.keras.Model(inputs, outputs)
 
   # In each benchmark test, the required arguments for the
   # method `measure_performance` include:

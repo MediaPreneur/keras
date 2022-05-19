@@ -141,7 +141,7 @@ class DistributionStrategySiameseEmbeddingModelCorrectnessTest(
     }
     x_predict = x_train
 
-    return x_train, y_train, x_predict
+    return x_predict, y_train, x_predict
 
   @tf.__internal__.distribute.combinations.generate(
       keras_correctness_test_base.test_combinations_for_embedding_model() +

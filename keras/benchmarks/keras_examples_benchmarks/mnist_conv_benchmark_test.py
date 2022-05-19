@@ -39,7 +39,7 @@ class ConvMnistBenchmark(tf.test.Benchmark):
 
   def _build_model(self):
     """Model from https://keras.io/examples/vision/mnist_convnet/."""
-    model = tf.keras.Sequential([
+    return tf.keras.Sequential([
         tf.keras.Input(shape=self.input_shape),
         tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
@@ -49,7 +49,6 @@ class ConvMnistBenchmark(tf.test.Benchmark):
         tf.keras.layers.Dropout(0.5),
         tf.keras.layers.Dense(self.num_classes, activation='softmax'),
     ])
-    return model
 
   # In each benchmark test, the required arguments for the
   # method `measure_performance` include:

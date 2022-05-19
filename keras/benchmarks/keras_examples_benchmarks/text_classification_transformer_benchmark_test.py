@@ -53,8 +53,7 @@ class TextWithTransformerBenchmark(tf.test.Benchmark):
     x = tf.keras.layers.Dropout(0.1)(x)
     outputs = tf.keras.layers.Dense(2, activation='softmax')(x)
 
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
-    return model
+    return tf.keras.Model(inputs=inputs, outputs=outputs)
 
   # In each benchmark test, the required arguments for the
   # method `measure_performance` include:
@@ -186,9 +185,7 @@ class MultiHeadSelfAttention(tf.keras.layers.Layer):
     concat_attention = tf.reshape(
         attention,
         (batch_size, -1, self.embed_dim))  # (batch_size, seq_len, embed_dim)
-    output = self.combine_heads(
-        concat_attention)  # (batch_size, seq_len, embed_dim)
-    return output
+    return self.combine_heads(concat_attention)
 
 
 class TransformerBlock(tf.keras.layers.Layer):

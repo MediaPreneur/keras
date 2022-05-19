@@ -98,8 +98,7 @@ def load_and_run_with_saved_model_api(distribution, saved_dir, predict_dataset,
 
     # Convert the per_replica value to a list, then concatenate them
     reduced = distribution.experimental_local_results(result)
-    concat = tf.concat(reduced, 0)
-    return concat
+    return tf.concat(reduced, 0)
   else:
     result = func.signatures[_DEFAULT_FUNCTION_KEY](next(iter(predict_dataset)))
     return result[output_name]

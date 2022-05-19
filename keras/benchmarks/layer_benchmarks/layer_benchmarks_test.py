@@ -27,10 +27,7 @@ from keras.benchmarks.layer_benchmarks import layer_benchmarks_test_base
 
 
 def _get_metadata(name):
-  return {
-      "model_name": "ideal_layers",
-      "parameters": name[1] + "_shape",
-  }
+  return {"model_name": "ideal_layers", "parameters": f"{name[1]}_shape"}
 
 
 def _get_layer_args(layer_cls, layer_args):
@@ -218,8 +215,8 @@ class KerasLayerBenchmarks(  # pylint: disable=undefined-variable
 
     fn = functools.partial(layer, x)
     name = benchmark_util.get_benchmark_name(self._get_name())
-    metadata = {"implementation": name[0] + ".layer.call"}
-    metadata.update(_get_metadata(name))
+    metadata = {"implementation": f"{name[0]}.layer.call"}
+    metadata |= _get_metadata(name)
     self.run_report(fn, num_iters, metadata)
 
   def benchmark_layer_call_with_function(
@@ -230,8 +227,8 @@ class KerasLayerBenchmarks(  # pylint: disable=undefined-variable
 
     fn = functools.partial(layer, x)
     name = benchmark_util.get_benchmark_name(self._get_name())
-    metadata = {"implementation": name[0] + ".layer.call.function"}
-    metadata.update(_get_metadata(name))
+    metadata = {"implementation": f"{name[0]}.layer.call.function"}
+    metadata |= _get_metadata(name)
     self.run_report(fn, num_iters, metadata)
 
   def benchmark_layer_call_with_xla(
@@ -246,8 +243,8 @@ class KerasLayerBenchmarks(  # pylint: disable=undefined-variable
         layer.call, jit_compile=True)
 
     fn = functools.partial(layer, x)
-    metadata = {"implementation": name[0] + ".layer.call.xla"}
-    metadata.update(_get_metadata(name))
+    metadata = {"implementation": f"{name[0]}.layer.call.xla"}
+    metadata |= _get_metadata(name)
     self.run_report(fn, num_iters, metadata)
 
   def benchmark_layer_call_backward(
@@ -257,8 +254,8 @@ class KerasLayerBenchmarks(  # pylint: disable=undefined-variable
 
     fn = functools.partial(_layer_call_backward, layer, x)
     name = benchmark_util.get_benchmark_name(self._get_name())
-    metadata = {"implementation": name[0] + ".layer.call.backward"}
-    metadata.update(_get_metadata(name))
+    metadata = {"implementation": f"{name[0]}.layer.call.backward"}
+    metadata |= _get_metadata(name)
     self.run_report(fn, num_iters, metadata)
 
   def benchmark_layer_call_backward_with_function(
@@ -269,8 +266,8 @@ class KerasLayerBenchmarks(  # pylint: disable=undefined-variable
 
     fn = functools.partial(_layer_call_backward, layer, x)
     name = benchmark_util.get_benchmark_name(self._get_name())
-    metadata = {"implementation": name[0] + ".layer.call.backward.function"}
-    metadata.update(_get_metadata(name))
+    metadata = {"implementation": f"{name[0]}.layer.call.backward.function"}
+    metadata |= _get_metadata(name)
     self.run_report(fn, num_iters, metadata)
 
   def benchmark_layer_call_backward_with_xla(
@@ -292,8 +289,8 @@ class KerasLayerBenchmarks(  # pylint: disable=undefined-variable
         layer.call, jit_compile=True)
 
     fn = functools.partial(_layer_call_backward, layer, x)
-    metadata = {"implementation": name[0] + ".layer.call.backward.xla"}
-    metadata.update(_get_metadata(name))
+    metadata = {"implementation": f"{name[0]}.layer.call.backward.xla"}
+    metadata |= _get_metadata(name)
     self.run_report(fn, num_iters, metadata)
 
 

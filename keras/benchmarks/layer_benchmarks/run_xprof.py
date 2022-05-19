@@ -26,7 +26,7 @@ def run_with_xprof(self, func, num_iters_xprof=100, enable_python_trace=True,
   suid = str(uuid.uuid4())
   if enable_python_trace:
     options = profiler.ProfilerOptions(python_tracer_level=1)
-    logdir = os.path.join(logdir, str(uuid.uuid4()) + "_with_python")
+    logdir = os.path.join(logdir, f"{str(uuid.uuid4())}_with_python")
   else:
     options = profiler.ProfilerOptions(python_tracer_level=0)
     logdir = os.path.join(logdir, suid)

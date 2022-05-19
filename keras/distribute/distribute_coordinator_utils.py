@@ -57,10 +57,8 @@ class _TaskType:
 
 def _get_num_workers(cluster_spec):
   """Gets number of workers including chief."""
-  if not cluster_spec:
-    return 0
-  return len(cluster_spec.as_dict().get(_TaskType.WORKER, [])) + len(
-      cluster_spec.as_dict().get(_TaskType.CHIEF, []))
+  return (len(cluster_spec.as_dict().get(_TaskType.WORKER, [])) + len(
+      cluster_spec.as_dict().get(_TaskType.CHIEF, [])) if cluster_spec else 0)
 
 
 class _WorkerContext:
@@ -116,8 +114,7 @@ class _WorkerContext:
       return "[local]"
 
   def __enter__(self):
-    old_context = get_current_worker_context()
-    if old_context:
+    if old_context := get_current_worker_context():
       raise ValueError(
           "You cannot run distribute coordinator in a `worker_fn`.\t" +
           self._debug_message())
@@ -140,18 +137,15 @@ class _WorkerContext:
     if not self._task_type:
       if _TaskType.CHIEF in self._cluster_spec.jobs:
         task_type = _TaskType.CHIEF
-        task_id = 0
       else:
         assert _TaskType.WORKER in self._cluster_spec.jobs
         task_type = _TaskType.WORKER
-        task_id = 0
+      task_id = 0
     else:
       task_type = self._task_type
       task_id = self._task_id
 
-    prefix = ""
-    if self._rpc_layer:
-      prefix = self._rpc_layer + "://"
+    prefix = f"{self._rpc_layer}://" if self._rpc_layer else ""
     return prefix + self._cluster_spec.job_tasks(task_type)[task_id or 0]
 
   def _is_chief(self):
@@ -568,8 +562,7 @@ def run_distribute_coordinator(worker_fn,
 
   if not cluster_spec:
     cluster_spec = tf_config.get("cluster", {})
-    task_env = tf_config.get("task", {})
-    if task_env:
+    if task_env := tf_config.get("task", {}):
       task_type = task_env.get("type", task_type)
       task_id = int(task_env.get("index", task_id))
 
@@ -637,14 +630,13 @@ def run_distribute_coordinator(worker_fn,
         # All jobs run `worker_fn` if between-graph.
         return _run_single_worker(worker_fn, strategy, cluster_spec, task_type,
                                   task_id, session_config, rpc_layer)
+      # Only one node runs `worker_fn` if in-graph.
+      context = _WorkerContext(strategy, cluster_spec, task_type, task_id)
+      if context.is_chief:
+        return _run_single_worker(worker_fn, strategy, cluster_spec, None,
+                                  None, session_config, rpc_layer)
       else:
-        # Only one node runs `worker_fn` if in-graph.
-        context = _WorkerContext(strategy, cluster_spec, task_type, task_id)
-        if context.is_chief:
-          return _run_single_worker(worker_fn, strategy, cluster_spec, None,
-                                    None, session_config, rpc_layer)
-        else:
-          server.join()
+        server.join()
     elif task_type == _TaskType.EVALUATOR:
       return _run_single_worker(eval_fn, eval_strategy, cluster_spec, task_type,
                                 task_id, session_config, rpc_layer)

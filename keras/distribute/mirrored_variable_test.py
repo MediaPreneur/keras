@@ -34,10 +34,8 @@ def _mimic_two_cpus():
 
 
 def get_strategy_with_mimicing_cpus():
-  if not _mimic_two_cpus():
-    return None
-  return (tf.distribute.MultiWorkerMirroredStrategy
-          ._from_local_devices(("/device:CPU:0", "/device:CPU:1")))
+  return ((tf.distribute.MultiWorkerMirroredStrategy._from_local_devices(
+      ("/device:CPU:0", "/device:CPU:1"))) if _mimic_two_cpus() else None)
 
 
 @tf.__internal__.distribute.combinations.generate(
@@ -66,9 +64,8 @@ class MirroredVariableCreationTest(tf.test.TestCase):
         self.assertIsNot(objs[i], objs[j])
 
   def _is_mirrored(self, val):
-    if distributed_training_utils.is_distributed_variable(val):
-      if val._policy:  # pylint: disable=protected-access
-        return val._policy._is_mirrored()  # pylint: disable=protected-access
+    if distributed_training_utils.is_distributed_variable(val) and val._policy:
+      return val._policy._is_mirrored()  # pylint: disable=protected-access
     # Since `Mirrored` is a private symbol in tf.distribute, we're checking
     # with `DistributedValues` as an approximation.
     return isinstance(val, tf.distribute.DistributedValues)

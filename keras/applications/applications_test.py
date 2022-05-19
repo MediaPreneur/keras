@@ -119,11 +119,10 @@ class ApplicationsTest(tf.test.TestCase, parameterized.TestCase):
 
   def assertShapeEqual(self, shape1, shape2):
     if len(shape1) != len(shape2):
-      raise AssertionError(
-          'Shapes are different rank: %s vs %s' % (shape1, shape2))
+      raise AssertionError(f'Shapes are different rank: {shape1} vs {shape2}')
     for v1, v2 in zip(shape1, shape2):
       if v1 != v2:
-        raise AssertionError('Shapes differ: %s vs %s' % (shape1, shape2))
+        raise AssertionError(f'Shapes differ: {shape1} vs {shape2}')
 
   @parameterized.parameters(*MODEL_LIST)
   def test_application_base(self, app, _):
@@ -142,10 +141,7 @@ class ApplicationsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(*MODEL_LIST)
   def test_application_notop(self, app, last_dim):
-    if 'NASNet' in app.__name__:
-      only_check_last_dim = True
-    else:
-      only_check_last_dim = False
+    only_check_last_dim = 'NASNet' in app.__name__
     output_shape = _get_output_shape(
         lambda: app(weights=None, include_top=False))
     if only_check_last_dim:

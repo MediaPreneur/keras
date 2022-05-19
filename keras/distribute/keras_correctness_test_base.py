@@ -140,11 +140,10 @@ def batch_wrapper(dataset, batch_size, repeat=None):
 
 def get_batch_size(global_batch_size, distribution):
   batch_size = global_batch_size
-  # TODO(b/118776054): Use global batch size for Keras/DS support.
-  use_per_core_batch_size = (
+  if use_per_core_batch_size := (
       distribution and
-      not distributed_training_utils.global_batch_size_supported(distribution))
-  if use_per_core_batch_size:
+      not distributed_training_utils.global_batch_size_supported(distribution)
+  ):
     batch_size //= distribution.num_replicas_in_sync
   return batch_size
 
@@ -163,10 +162,8 @@ def get_data_size(data):
 
 
 def get_shapes(data):
-  shapes = None
-  if all(hasattr(x, 'shape') for x in tf.nest.flatten(data)):
-    shapes = tf.nest.map_structure(lambda x: x.shape, data)
-  return shapes
+  return (tf.nest.map_structure(lambda x: x.shape, data) if all(
+      hasattr(x, 'shape') for x in tf.nest.flatten(data)) else None)
 
 
 def get_correctness_test_inputs(use_numpy, use_validation_data,
@@ -252,23 +249,16 @@ def fit_eval_and_predict(initial_weights,
       distribution=distribution,
       input_shapes=get_shapes(training_inputs['x']))
 
-  result = {}
-  result['training_history_1'] = model.fit(**training_inputs).history
-
+  result = {'training_history_1': model.fit(**training_inputs).history}
   if eval_inputs is not None:
     result['eval_result_1'] = model.evaluate(**eval_inputs)
 
   result['weights_1'] = model.get_weights()
 
   if predict_inputs is not None:
-    # Check correctness of the result of predict() invoked
-    # multiple times -- as for stateful models, result of
-    # predict may differ for each batch.
-    predict_length = 1
-    if is_stateful_model:
-      predict_length = 3
+    predict_length = 3 if is_stateful_model else 1
     for i in range(predict_length):
-      result_key = 'predict_result_{}'.format(i)
+      result_key = f'predict_result_{i}'
       result[result_key] = model.predict(**predict_inputs)
 
   # Train and eval again to mimic user's flow.
@@ -390,7 +380,7 @@ class TestDistributionStrategyCorrectnessBase(tf.test.TestCase,
     x_train = np.random.randint(0, 2, num_samples)
     x_train = np.reshape(x_train, (num_samples, 1))
     y_train = x_train
-    return (x_train.astype('float32'), y_train.astype('float32'), None)
+    return y_train.astype('float32'), y_train.astype('float32'), None
 
   def get_data_with_partial_last_batch(self):
     raise NotImplementedError

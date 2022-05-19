@@ -110,13 +110,10 @@ def InceptionResNetV2(include_top=True,
     A `keras.Model` instance.
   """
   global layers
-  if 'layers' in kwargs:
-    layers = kwargs.pop('layers')
-  else:
-    layers = VersionAwareLayers()
+  layers = kwargs.pop('layers') if 'layers' in kwargs else VersionAwareLayers()
   if kwargs:
-    raise ValueError('Unknown argument(s): %s' % (kwargs,))
-  if not (weights in {'imagenet', None} or tf.io.gfile.exists(weights)):
+    raise ValueError(f'Unknown argument(s): {kwargs}')
+  if weights not in {'imagenet', None} and not tf.io.gfile.exists(weights):
     raise ValueError('The `weights` argument should be either '
                      '`None` (random initialization), `imagenet` '
                      '(pre-training on ImageNet), '
@@ -138,11 +135,8 @@ def InceptionResNetV2(include_top=True,
   if input_tensor is None:
     img_input = layers.Input(shape=input_shape)
   else:
-    if not backend.is_keras_tensor(input_tensor):
-      img_input = layers.Input(tensor=input_tensor, shape=input_shape)
-    else:
-      img_input = input_tensor
-
+    img_input = (input_tensor if backend.is_keras_tensor(input_tensor) else
+                 layers.Input(tensor=input_tensor, shape=input_shape))
   # Stem block: 35 x 35 x 192
   x = conv2d_bn(img_input, 32, 3, strides=2, padding='valid')
   x = conv2d_bn(x, 32, 3, padding='valid')
@@ -212,11 +206,10 @@ def InceptionResNetV2(include_top=True,
     imagenet_utils.validate_activation(classifier_activation, weights)
     x = layers.Dense(classes, activation=classifier_activation,
                      name='predictions')(x)
-  else:
-    if pooling == 'avg':
-      x = layers.GlobalAveragePooling2D()(x)
-    elif pooling == 'max':
-      x = layers.GlobalMaxPooling2D()(x)
+  elif pooling == 'avg':
+    x = layers.GlobalAveragePooling2D()(x)
+  elif pooling == 'max':
+    x = layers.GlobalMaxPooling2D()(x)
 
   # Ensure that the model takes into account
   # any potential predecessors of `input_tensor`.
@@ -286,10 +279,10 @@ def conv2d_bn(x,
           x)
   if not use_bias:
     bn_axis = 1 if backend.image_data_format() == 'channels_first' else 3
-    bn_name = None if name is None else name + '_bn'
+    bn_name = None if name is None else f'{name}_bn'
     x = layers.BatchNormalization(axis=bn_axis, scale=False, name=bn_name)(x)
   if activation is not None:
-    ac_name = None if name is None else name + '_ac'
+    ac_name = None if name is None else f'{name}_ac'
     x = layers.Activation(activation, name=ac_name)(x)
   return x
 
@@ -354,18 +347,18 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
                      'Expects "block35", "block17" or "block8", '
                      'but got: ' + str(block_type))
 
-  block_name = block_type + '_' + str(block_idx)
+  block_name = f'{block_type}_{str(block_idx)}'
   channel_axis = 1 if backend.image_data_format() == 'channels_first' else 3
   mixed = layers.Concatenate(
-      axis=channel_axis, name=block_name + '_mixed')(
-          branches)
+      axis=channel_axis, name=f'{block_name}_mixed')(branches)
   up = conv2d_bn(
       mixed,
       backend.int_shape(x)[channel_axis],
       1,
       activation=None,
       use_bias=True,
-      name=block_name + '_conv')
+      name=f'{block_name}_conv',
+  )
 
   x = layers.Lambda(
       lambda inputs, scale: inputs[0] + inputs[1] * scale,
@@ -373,7 +366,7 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
       arguments={'scale': scale},
       name=block_name)([x, up])
   if activation is not None:
-    x = layers.Activation(activation, name=block_name + '_ac')(x)
+    x = layers.Activation(activation, name=f'{block_name}_ac')(x)
   return x
 
 

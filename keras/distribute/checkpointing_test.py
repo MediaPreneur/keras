@@ -97,8 +97,7 @@ class TrainingCheckpointTests(tf.test.TestCase, parameterized.TestCase):
 
     def state():
       with distribution.scope():
-        v = tf.Variable(tf.random.normal([]))
-        return v
+        return tf.Variable(tf.random.normal([]))
 
     ckpt_options = tf.train.CheckpointOptions(
         experimental_io_device="/job:localhost")

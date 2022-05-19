@@ -95,17 +95,15 @@ class SavedModelTFModuleTest(test_base.TestSavedModelBase):
     pass
 
   def _predict_with_model(self, distribution, model, predict_dataset):
-    if distribution:
-      dist_predict_dataset = distribution.experimental_distribute_dataset(
-          predict_dataset)
-      per_replica_predict_data = next(iter(dist_predict_dataset))
-      result = distribution.run(model, args=(per_replica_predict_data,))
-      # Convert the per_replica value to a list, then concatenate them
-      reduced = distribution.experimental_local_results(result)
-      concat = tf.concat(reduced, 0)
-      return concat
-    else:
+    if not distribution:
       return model(next(iter(predict_dataset)))
+    dist_predict_dataset = distribution.experimental_distribute_dataset(
+        predict_dataset)
+    per_replica_predict_data = next(iter(dist_predict_dataset))
+    result = distribution.run(model, args=(per_replica_predict_data,))
+    # Convert the per_replica value to a list, then concatenate them
+    reduced = distribution.experimental_local_results(result)
+    return tf.concat(reduced, 0)
 
   def _save_model(self, model, saved_dir):
     call = model.__call__.get_concrete_function(tf.TensorSpec(None))

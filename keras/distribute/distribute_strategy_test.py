@@ -81,9 +81,8 @@ def simple_multi_inputs_multi_outputs_model():
   merged = keras.layers.concatenate([input_a, input_b], name='merge')
   output_c = keras.layers.Dense(3, activation='softmax', name='dense_2')(merged)
   output_d = keras.layers.Dense(2, activation='softmax', name='dense_3')(merged)
-  model = keras.models.Model(
+  return keras.models.Model(
       inputs=[input_a, input_b], outputs=[output_c, output_d])
-  return model
 
 
 def get_multi_inputs_multi_outputs_data():
@@ -143,8 +142,7 @@ def batch_wrapper(dataset, batch_size, distribution, repeat=None):
 def get_model():
   x = keras.layers.Input(shape=(3,), name='input')
   y = keras.layers.Dense(4, name='dense')(x)
-  model = keras.Model(x, y)
-  return model
+  return keras.Model(x, y)
 
 
 def get_sample_weights_model():
@@ -152,8 +150,7 @@ def get_sample_weights_model():
   y = keras.layers.Dense(
       1, kernel_initializer='ones', bias_initializer='zeros', name='dense')(
           x)
-  model = keras.Model(x, y)
-  return model
+  return keras.Model(x, y)
 
 
 def get_dataset(distribution):
@@ -182,9 +179,7 @@ def convert_numpy_to_dataset_with_unknown_cardinality(inputs, targets=None):
     dummy_op = (lambda inp: True)
 
   original_dataset = (tf.data.Dataset.from_tensor_slices(input_slices))
-  ds_with_unknown_cardinality = (
-      original_dataset.filter(dummy_op).batch(10, drop_remainder=True))
-  return ds_with_unknown_cardinality
+  return original_dataset.filter(dummy_op).batch(10, drop_remainder=True)
 
 
 def multi_input_output_model():
@@ -197,8 +192,7 @@ def multi_input_output_model():
   c = dense_1(a)
   d = dense_2(b)
   e = keras.layers.Dropout(0.5, name='dropout')(c)
-  model = keras.models.Model([a, b], [d, e])
-  return model
+  return keras.models.Model([a, b], [d, e])
 
 
 def strategy_minus_tpu_combinations():
@@ -334,12 +328,10 @@ class TestDistributionStrategyWithNumpyArrays(tf.test.TestCase,
 
   @tf.__internal__.distribute.combinations.generate(all_strategy_combinations())
   def test_calculating_input_params_no_steps_no_batch_size(self, distribution):
-    # Calculate the per_replica_batch_size scaling factor for strategies
-    # that use per_core_batch_size
-    replica_scale_factor = 1.0
-    if not distributed_training_utils.global_batch_size_supported(distribution):
-      replica_scale_factor = distribution.num_replicas_in_sync
-
+    replica_scale_factor = (
+        1.0
+        if distributed_training_utils.global_batch_size_supported(distribution)
+        else distribution.num_replicas_in_sync)
     with self.cached_session():
       # Default global batch size 32 for input with 64 samples run in 2 steps
       steps, batch_size = distributed_training_utils_v1.get_input_params(
@@ -356,12 +348,10 @@ class TestDistributionStrategyWithNumpyArrays(tf.test.TestCase,
   @tf.__internal__.distribute.combinations.generate(all_strategy_combinations())
   def test_calculating_input_params_with_steps_no_batch_size(
       self, distribution):
-    # Calculate the per_replica_batch_size scaling factor for strategies
-    # that use per_core_batch_size
-    replica_scale_factor = 1.0
-    if not distributed_training_utils.global_batch_size_supported(distribution):
-      replica_scale_factor = distribution.num_replicas_in_sync
-
+    replica_scale_factor = (
+        1.0
+        if distributed_training_utils.global_batch_size_supported(distribution)
+        else distribution.num_replicas_in_sync)
     with self.cached_session():
       # Computed global batch size is correct for number of specified 1 step
       steps, batch_size = distributed_training_utils_v1.get_input_params(
@@ -399,12 +389,10 @@ class TestDistributionStrategyWithNumpyArrays(tf.test.TestCase,
   @tf.__internal__.distribute.combinations.generate(all_strategy_combinations())
   def test_calculating_input_params_no_steps_with_batch_size(
       self, distribution):
-    # Calculate the per_replica_batch_size scaling factor for strategies
-    # that use per_core_batch_size
-    replica_scale_factor = 1.0
-    if not distributed_training_utils.global_batch_size_supported(distribution):
-      replica_scale_factor = distribution.num_replicas_in_sync
-
+    replica_scale_factor = (
+        1.0
+        if distributed_training_utils.global_batch_size_supported(distribution)
+        else distribution.num_replicas_in_sync)
     with self.cached_session():
       # Computed steps is correct for specified batch size
       steps, batch_size = distributed_training_utils_v1.get_input_params(
@@ -2042,8 +2030,7 @@ class TestDistributionStrategyWithKerasModels(tf.test.TestCase,
       x1 = keras.layers.Dense(10, kernel_initializer='zeros')(inputs)
       x2 = keras.layers.Dense(10, kernel_initializer='zeros')(x1)
       outputs = keras.layers.Dense(1, kernel_initializer='zeros')(x2)
-      model = keras.Model(inputs, outputs)
-      return model
+      return keras.Model(inputs, outputs)
 
     x = np.random.random((64, 10))
     y = np.random.random((64, 1))
@@ -2148,8 +2135,7 @@ class TestDistributionStrategyWithKerasModels(tf.test.TestCase,
       x1 = keras.layers.Dense(10, kernel_initializer='zeros')(inputs)
       x2 = Bias()(x1)
       outputs = keras.layers.Dense(1, kernel_initializer='zeros')(x2)
-      model = keras.Model(inputs, outputs)
-      return model
+      return keras.Model(inputs, outputs)
 
     x = np.ones((64, 10)).astype('float32')
     y = np.ones((64, 1)).astype('float32')
@@ -2202,8 +2188,7 @@ class TestDistributionStrategyWithKerasModels(tf.test.TestCase,
       x1 = keras.layers.Dense(10, kernel_initializer='zeros')(inputs)
       x2 = Bias()(x1)
       outputs = keras.layers.Dense(1, kernel_initializer='zeros')(x2)
-      model = keras.Model(inputs, outputs)
-      return model
+      return keras.Model(inputs, outputs)
 
     x = np.ones((64, 10)).astype('float32')
     y = np.ones((64, 1)).astype('float32')
@@ -2540,7 +2525,7 @@ class TestDistributionStrategyWithMultipleAddLossAndMetricCalls(
               keras.metrics.SparseCategoricalCrossentropy(from_logits=True),
           ])
     # Non-eager training doesn't support steps_per_epoch=None.
-    for unused_epoch in range(2):
+    for _ in range(2):
       model.fit(dataset)
     results = dict(zip(model.metrics_names, model.evaluate(dataset)))
     # Sanity checks.
@@ -2599,7 +2584,7 @@ class TestModelCapturesStrategy(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(model.optimizer.iterations.numpy(), 0)
 
     # Non-eager training doesn't support steps_per_epoch=None.
-    for unused_epoch in range(2):
+    for _ in range(2):
       model.fit(dataset)
 
     results = model.evaluate(dataset)

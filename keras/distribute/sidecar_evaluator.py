@@ -212,7 +212,7 @@ class SidecarEvaluator:
         # property to be used in callbacks.
         if self.model.optimizer:
           self.model.optimizer.iterations.assign(self._iterations)
-      except (tf.errors.OpError,) as e:
+      except tf.errors.OpError as e:
         # A couple errors can happen here with the coordinator racing to write
         # checkpoint:
         # 1) OpError: open failed for <file path>: No such file or directory
@@ -243,15 +243,17 @@ class SidecarEvaluator:
       for metric in self.model.metrics:
         result = metric.result()
         if isinstance(result, dict):
-          return_metrics.update(result)
+          return_metrics |= result
         else:
           return_metrics[metric.name] = result
 
       logging.info(
-          'End of evaluation. Metrics: %s', ' '.join([
-              '{}={}'.format(name, value.numpy())
+          'End of evaluation. Metrics: %s',
+          ' '.join([
+              f'{name}={value.numpy()}'
               for name, value in return_metrics.items()
-          ]))
+          ]),
+      )
 
       if (self.max_evaluations and
           (self.max_evaluations <= int(latest_checkpoint.split('-')[-1]))):

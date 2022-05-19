@@ -38,8 +38,7 @@ def get_example_array():
 
 def get_example_kernel(width):
   np.random.seed(3537)
-  example_array = np.random.rand(width, width, 2, 2)
-  return example_array
+  return np.random.rand(width, width, 2, 2)
 
 
 @test_combinations.generate(test_combinations.combine(mode=['graph', 'eager']))

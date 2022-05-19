@@ -634,14 +634,11 @@ def MBConvBlock(
           padding="same",
           data_format="channels_last",
           use_bias=False,
-          name=name + "expand_conv",
+          name=f"{name}expand_conv",
       )(inputs)
       x = layers.BatchNormalization(
-          axis=bn_axis,
-          momentum=bn_momentum,
-          name=name + "expand_bn",
-      )(x)
-      x = layers.Activation(activation, name=name + "expand_activation")(x)
+          axis=bn_axis, momentum=bn_momentum, name=f"{name}expand_bn")(x)
+      x = layers.Activation(activation, name=f"{name}expand_activation")(x)
     else:
       x = inputs
 
@@ -653,21 +650,18 @@ def MBConvBlock(
         padding="same",
         data_format="channels_last",
         use_bias=False,
-        name=name + "dwconv2",
+        name=f"{name}dwconv2",
     )(x)
     x = layers.BatchNormalization(
-        axis=bn_axis, momentum=bn_momentum, name=name + "bn")(x)
-    x = layers.Activation(activation, name=name + "activation")(x)
+        axis=bn_axis, momentum=bn_momentum, name=f"{name}bn")(x)
+    x = layers.Activation(activation, name=f"{name}activation")(x)
 
     # Squeeze and excite
     if 0 < se_ratio <= 1:
       filters_se = max(1, int(input_filters * se_ratio))
-      se = layers.GlobalAveragePooling2D(name=name + "se_squeeze")(x)
-      if bn_axis == 1:
-        se_shape = (filters, 1, 1)
-      else:
-        se_shape = (1, 1, filters)
-      se = layers.Reshape(se_shape, name=name + "se_reshape")(se)
+      se = layers.GlobalAveragePooling2D(name=f"{name}se_squeeze")(x)
+      se_shape = (filters, 1, 1) if bn_axis == 1 else (1, 1, filters)
+      se = layers.Reshape(se_shape, name=f"{name}se_reshape")(se)
 
       se = layers.Conv2D(
           filters_se,
@@ -675,7 +669,7 @@ def MBConvBlock(
           padding="same",
           activation=activation,
           kernel_initializer=CONV_KERNEL_INITIALIZER,
-          name=name + "se_reduce",
+          name=f"{name}se_reduce",
       )(se)
       se = layers.Conv2D(
           filters,
@@ -683,10 +677,10 @@ def MBConvBlock(
           padding="same",
           activation="sigmoid",
           kernel_initializer=CONV_KERNEL_INITIALIZER,
-          name=name + "se_expand",
+          name=f"{name}se_expand",
       )(se)
 
-      x = layers.multiply([x, se], name=name + "se_excite")
+      x = layers.multiply([x, se], name=f"{name}se_excite")
 
       # Output phase
       x = layers.Conv2D(
@@ -697,19 +691,19 @@ def MBConvBlock(
           padding="same",
           data_format="channels_last",
           use_bias=False,
-          name=name + "project_conv",
+          name=f"{name}project_conv",
       )(x)
       x = layers.BatchNormalization(
-          axis=bn_axis, momentum=bn_momentum, name=name + "project_bn")(x)
+          axis=bn_axis, momentum=bn_momentum, name=f"{name}project_bn")(x)
 
       if strides == 1 and input_filters == output_filters:
         if survival_probability:
           x = layers.Dropout(
               survival_probability,
               noise_shape=(None, 1, 1, 1),
-              name=name + "drop",
+              name=f"{name}drop",
           )(x)
-        x = layers.add([x, inputs], name=name + "add")
+        x = layers.add([x, inputs], name=f"{name}add")
     return x
 
   return apply
@@ -744,25 +738,21 @@ def FusedMBConvBlock(
           data_format="channels_last",
           padding="same",
           use_bias=False,
-          name=name + "expand_conv",
+          name=f"{name}expand_conv",
       )(inputs)
       x = layers.BatchNormalization(
-          axis=bn_axis, momentum=bn_momentum, name=name + "expand_bn")(x)
+          axis=bn_axis, momentum=bn_momentum, name=f"{name}expand_bn")(x)
       x = layers.Activation(
-          activation=activation, name=name + "expand_activation")(x)
+          activation=activation, name=f"{name}expand_activation")(x)
     else:
       x = inputs
 
     # Squeeze and excite
     if 0 < se_ratio <= 1:
       filters_se = max(1, int(input_filters * se_ratio))
-      se = layers.GlobalAveragePooling2D(name=name + "se_squeeze")(x)
-      if bn_axis == 1:
-        se_shape = (filters, 1, 1)
-      else:
-        se_shape = (1, 1, filters)
-
-      se = layers.Reshape(se_shape, name=name + "se_reshape")(se)
+      se = layers.GlobalAveragePooling2D(name=f"{name}se_squeeze")(x)
+      se_shape = (filters, 1, 1) if bn_axis == 1 else (1, 1, filters)
+      se = layers.Reshape(se_shape, name=f"{name}se_reshape")(se)
 
       se = layers.Conv2D(
           filters_se,
@@ -770,7 +760,7 @@ def FusedMBConvBlock(
           padding="same",
           activation=activation,
           kernel_initializer=CONV_KERNEL_INITIALIZER,
-          name=name + "se_reduce",
+          name=f"{name}se_reduce",
       )(se)
       se = layers.Conv2D(
           filters,
@@ -778,10 +768,10 @@ def FusedMBConvBlock(
           padding="same",
           activation="sigmoid",
           kernel_initializer=CONV_KERNEL_INITIALIZER,
-          name=name + "se_expand",
+          name=f"{name}se_expand",
       )(se)
 
-      x = layers.multiply([x, se], name=name + "se_excite")
+      x = layers.multiply([x, se], name=f"{name}se_excite")
 
     # Output phase:
     x = layers.Conv2D(
@@ -791,13 +781,13 @@ def FusedMBConvBlock(
         kernel_initializer=CONV_KERNEL_INITIALIZER,
         padding="same",
         use_bias=False,
-        name=name + "project_conv",
+        name=f"{name}project_conv",
     )(x)
     x = layers.BatchNormalization(
-        axis=bn_axis, momentum=bn_momentum, name=name + "project_bn")(x)
+        axis=bn_axis, momentum=bn_momentum, name=f"{name}project_bn")(x)
     if expand_ratio == 1:
       x = layers.Activation(
-          activation=activation, name=name + "project_activation")(x)
+          activation=activation, name=f"{name}project_activation")(x)
 
     # Residual:
     if strides == 1 and input_filters == output_filters:
@@ -805,9 +795,8 @@ def FusedMBConvBlock(
         x = layers.Dropout(
             survival_probability,
             noise_shape=(None, 1, 1, 1),
-            name=name + "drop",
-        )(x)
-      x = layers.add([x, inputs], name=name + "add")
+            name=f"{name}drop")(x)
+      x = layers.add([x, inputs], name=f"{name}add")
     return x
 
   return apply
@@ -884,7 +873,7 @@ def EfficientNetV2(
   if blocks_args == "default":
     blocks_args = DEFAULT_BLOCKS_ARGS[model_name]
 
-  if not (weights in {"imagenet", None} or tf.io.gfile.exists(weights)):
+  if weights not in {"imagenet", None} and not tf.io.gfile.exists(weights):
     raise ValueError("The `weights` argument should be either "
                      "`None` (random initialization), `imagenet` "
                      "(pre-training on ImageNet), "
@@ -908,11 +897,8 @@ def EfficientNetV2(
   if input_tensor is None:
     img_input = layers.Input(shape=input_shape)
   else:
-    if not backend.is_keras_tensor(input_tensor):
-      img_input = layers.Input(tensor=input_tensor, shape=input_shape)
-    else:
-      img_input = input_tensor
-
+    img_input = (input_tensor if backend.is_keras_tensor(input_tensor) else
+                 layers.Input(tensor=input_tensor, shape=input_shape))
   bn_axis = 3 if backend.image_data_format() == "channels_last" else 1
 
   x = img_input
@@ -988,7 +974,7 @@ def EfficientNetV2(
           activation=activation,
           bn_momentum=bn_momentum,
           survival_probability=drop_connect_rate * b / blocks,
-          name="block{}{}_".format(i + 1, chr(j + 97)),
+          name=f"block{i + 1}{chr(j + 97)}_",
           **args,
       )(x)
       b += 1
@@ -1027,11 +1013,10 @@ def EfficientNetV2(
         kernel_initializer=DENSE_KERNEL_INITIALIZER,
         bias_initializer=tf.constant_initializer(0),
         name="predictions")(x)
-  else:
-    if pooling == "avg":
-      x = layers.GlobalAveragePooling2D(name="avg_pool")(x)
-    elif pooling == "max":
-      x = layers.GlobalMaxPooling2D(name="max_pool")(x)
+  elif pooling == "avg":
+    x = layers.GlobalAveragePooling2D(name="avg_pool")(x)
+  elif pooling == "max":
+    x = layers.GlobalMaxPooling2D(name="max_pool")(x)
 
   # Ensure that the model takes into account
   # any potential predecessors of `input_tensor`.

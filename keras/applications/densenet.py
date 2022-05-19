@@ -20,6 +20,7 @@ Reference:
       https://arxiv.org/abs/1608.06993) (CVPR 2017)
 """
 
+
 import tensorflow.compat.v2 as tf
 
 from keras import backend
@@ -34,17 +35,17 @@ from tensorflow.python.util.tf_export import keras_export
 BASE_WEIGHTS_PATH = ('https://storage.googleapis.com/tensorflow/'
                      'keras-applications/densenet/')
 DENSENET121_WEIGHT_PATH = (
-    BASE_WEIGHTS_PATH + 'densenet121_weights_tf_dim_ordering_tf_kernels.h5')
+    f'{BASE_WEIGHTS_PATH}densenet121_weights_tf_dim_ordering_tf_kernels.h5')
 DENSENET121_WEIGHT_PATH_NO_TOP = (
     BASE_WEIGHTS_PATH +
     'densenet121_weights_tf_dim_ordering_tf_kernels_notop.h5')
 DENSENET169_WEIGHT_PATH = (
-    BASE_WEIGHTS_PATH + 'densenet169_weights_tf_dim_ordering_tf_kernels.h5')
+    f'{BASE_WEIGHTS_PATH}densenet169_weights_tf_dim_ordering_tf_kernels.h5')
 DENSENET169_WEIGHT_PATH_NO_TOP = (
     BASE_WEIGHTS_PATH +
     'densenet169_weights_tf_dim_ordering_tf_kernels_notop.h5')
 DENSENET201_WEIGHT_PATH = (
-    BASE_WEIGHTS_PATH + 'densenet201_weights_tf_dim_ordering_tf_kernels.h5')
+    f'{BASE_WEIGHTS_PATH}densenet201_weights_tf_dim_ordering_tf_kernels.h5')
 DENSENET201_WEIGHT_PATH_NO_TOP = (
     BASE_WEIGHTS_PATH +
     'densenet201_weights_tf_dim_ordering_tf_kernels_notop.h5')
@@ -64,7 +65,7 @@ def dense_block(x, blocks, name):
     Output tensor for the block.
   """
   for i in range(blocks):
-    x = conv_block(x, 32, name=name + '_block' + str(i + 1))
+    x = conv_block(x, 32, name=f'{name}_block{str(i + 1)}')
   return x
 
 
@@ -81,16 +82,15 @@ def transition_block(x, reduction, name):
   """
   bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_bn')(
-          x)
-  x = layers.Activation('relu', name=name + '_relu')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_bn')(x)
+  x = layers.Activation('relu', name=f'{name}_relu')(x)
   x = layers.Conv2D(
       int(backend.int_shape(x)[bn_axis] * reduction),
       1,
       use_bias=False,
-      name=name + '_conv')(
-          x)
-  x = layers.AveragePooling2D(2, strides=2, name=name + '_pool')(x)
+      name=f'{name}_conv',
+  )(x)
+  x = layers.AveragePooling2D(2, strides=2, name=f'{name}_pool')(x)
   return x
 
 
@@ -107,20 +107,17 @@ def conv_block(x, growth_rate, name):
   """
   bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
   x1 = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_0_bn')(
-          x)
-  x1 = layers.Activation('relu', name=name + '_0_relu')(x1)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_0_bn')(x)
+  x1 = layers.Activation('relu', name=f'{name}_0_relu')(x1)
   x1 = layers.Conv2D(
-      4 * growth_rate, 1, use_bias=False, name=name + '_1_conv')(
-          x1)
+      4 * growth_rate, 1, use_bias=False, name=f'{name}_1_conv')(x1)
   x1 = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_1_bn')(
-          x1)
-  x1 = layers.Activation('relu', name=name + '_1_relu')(x1)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_1_bn')(x1)
+  x1 = layers.Activation('relu', name=f'{name}_1_relu')(x1)
   x1 = layers.Conv2D(
-      growth_rate, 3, padding='same', use_bias=False, name=name + '_2_conv')(
-          x1)
-  x = layers.Concatenate(axis=bn_axis, name=name + '_concat')([x, x1])
+      growth_rate, 3, padding='same', use_bias=False,
+      name=f'{name}_2_conv')(x1)
+  x = layers.Concatenate(axis=bn_axis, name=f'{name}_concat')([x, x1])
   return x
 
 
@@ -196,7 +193,7 @@ def DenseNet(
   Returns:
     A `keras.Model` instance.
   """
-  if not (weights in {'imagenet', None} or tf.io.gfile.exists(weights)):
+  if weights not in {'imagenet', None} and not tf.io.gfile.exists(weights):
     raise ValueError('The `weights` argument should be either '
                      '`None` (random initialization), `imagenet` '
                      '(pre-training on ImageNet), '
@@ -218,11 +215,8 @@ def DenseNet(
   if input_tensor is None:
     img_input = layers.Input(shape=input_shape)
   else:
-    if not backend.is_keras_tensor(input_tensor):
-      img_input = layers.Input(tensor=input_tensor, shape=input_shape)
-    else:
-      img_input = input_tensor
-
+    img_input = (input_tensor if backend.is_keras_tensor(input_tensor) else
+                 layers.Input(tensor=input_tensor, shape=input_shape))
   bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
 
   x = layers.ZeroPadding2D(padding=((3, 3), (3, 3)))(img_input)
@@ -251,11 +245,10 @@ def DenseNet(
     imagenet_utils.validate_activation(classifier_activation, weights)
     x = layers.Dense(classes, activation=classifier_activation,
                      name='predictions')(x)
-  else:
-    if pooling == 'avg':
-      x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
-    elif pooling == 'max':
-      x = layers.GlobalMaxPooling2D(name='max_pool')(x)
+  elif pooling == 'avg':
+    x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
+  elif pooling == 'max':
+    x = layers.GlobalMaxPooling2D(name='max_pool')(x)
 
   # Ensure that the model takes into account
   # any potential predecessors of `input_tensor`.
@@ -276,44 +269,31 @@ def DenseNet(
 
   # Load weights.
   if weights == 'imagenet':
-    if include_top:
-      if blocks == [6, 12, 24, 16]:
+    if blocks == [6, 12, 24, 16]:
+      if include_top:
         weights_path = data_utils.get_file(
             'densenet121_weights_tf_dim_ordering_tf_kernels.h5',
             DENSENET121_WEIGHT_PATH,
             cache_subdir='models',
             file_hash='9d60b8095a5708f2dcce2bca79d332c7')
-      elif blocks == [6, 12, 32, 32]:
-        weights_path = data_utils.get_file(
-            'densenet169_weights_tf_dim_ordering_tf_kernels.h5',
-            DENSENET169_WEIGHT_PATH,
-            cache_subdir='models',
-            file_hash='d699b8f76981ab1b30698df4c175e90b')
-      elif blocks == [6, 12, 48, 32]:
-        weights_path = data_utils.get_file(
-            'densenet201_weights_tf_dim_ordering_tf_kernels.h5',
-            DENSENET201_WEIGHT_PATH,
-            cache_subdir='models',
-            file_hash='1ceb130c1ea1b78c3bf6114dbdfd8807')
-    else:
-      if blocks == [6, 12, 24, 16]:
+      else:
         weights_path = data_utils.get_file(
             'densenet121_weights_tf_dim_ordering_tf_kernels_notop.h5',
             DENSENET121_WEIGHT_PATH_NO_TOP,
             cache_subdir='models',
             file_hash='30ee3e1110167f948a6b9946edeeb738')
-      elif blocks == [6, 12, 32, 32]:
-        weights_path = data_utils.get_file(
-            'densenet169_weights_tf_dim_ordering_tf_kernels_notop.h5',
-            DENSENET169_WEIGHT_PATH_NO_TOP,
-            cache_subdir='models',
-            file_hash='b8c4d4c20dd625c148057b9ff1c1176b')
-      elif blocks == [6, 12, 48, 32]:
-        weights_path = data_utils.get_file(
-            'densenet201_weights_tf_dim_ordering_tf_kernels_notop.h5',
-            DENSENET201_WEIGHT_PATH_NO_TOP,
-            cache_subdir='models',
-            file_hash='c13680b51ded0fb44dff2d8f86ac8bb1')
+    elif blocks == [6, 12, 32, 32]:
+      weights_path = data_utils.get_file(
+          'densenet169_weights_tf_dim_ordering_tf_kernels.h5',
+          DENSENET169_WEIGHT_PATH,
+          cache_subdir='models',
+          file_hash='d699b8f76981ab1b30698df4c175e90b')
+    elif blocks == [6, 12, 48, 32]:
+      weights_path = data_utils.get_file(
+          'densenet201_weights_tf_dim_ordering_tf_kernels.h5',
+          DENSENET201_WEIGHT_PATH,
+          cache_subdir='models',
+          file_hash='1ceb130c1ea1b78c3bf6114dbdfd8807')
     model.load_weights(weights_path)
   elif weights is not None:
     model.load_weights(weights)

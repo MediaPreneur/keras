@@ -66,8 +66,7 @@ class KerasModelsTest(tf.test.TestCase, parameterized.TestCase):
         with tf.GradientTape() as tape:
           outputs = model(images)
           loss = keras.losses.mean_squared_error(targets, outputs)
-        grads = tape.gradient(loss, model.variables)
-        return grads
+        return tape.gradient(loss, model.variables)
 
       outputs = distribution.run(
           step_fn, args=(next(iterator),))
@@ -257,8 +256,7 @@ class KerasModelsTest(tf.test.TestCase, parameterized.TestCase):
     def get_model():
       x = keras.layers.Input(shape=(3,), name="input")
       y = keras.layers.Dense(4, name="dense")(x)
-      model = keras.Model(x, y)
-      return model
+      return keras.Model(x, y)
 
     with distribution.scope():
       model = get_model()
@@ -325,8 +323,7 @@ class KerasModelsTest(tf.test.TestCase, parameterized.TestCase):
     def get_model():
       x = keras.layers.Input(shape=(3,), name="input")
       y = keras.layers.Dense(4, name="dense")(x)
-      model = keras.Model(x, y)
-      return model
+      return keras.Model(x, y)
 
     with distribution.scope():
       model = get_model()
@@ -366,8 +363,7 @@ class KerasModelsTest(tf.test.TestCase, parameterized.TestCase):
     def get_model():
       x = keras.layers.Input(shape=(3,), name="input")
       y = keras.layers.Dense(4, name="dense")(x)
-      model = keras.Model(x, y)
-      return model
+      return keras.Model(x, y)
 
     with distribution.scope():
       model = get_model()
@@ -405,8 +401,7 @@ class KerasModelsTest(tf.test.TestCase, parameterized.TestCase):
         with tf.GradientTape() as tape:
           outputs = model(images)
           loss = keras.losses.mean_squared_error(targets, outputs)
-        grads = tape.gradient(loss, model.variables)
-        return grads
+        return tape.gradient(loss, model.variables)
 
       outputs = distribution.run(
           step_fn, args=(next(iterator),))
@@ -433,8 +428,7 @@ class KerasModelsTest(tf.test.TestCase, parameterized.TestCase):
       def step_fn(inputs):
         images, targets = inputs
         outputs = model(images)
-        loss = keras.losses.sparse_categorical_crossentropy(targets, outputs)
-        return loss
+        return keras.losses.sparse_categorical_crossentropy(targets, outputs)
 
       return distribution.run(step_fn, args=(next(iterator),))
 
@@ -467,9 +461,8 @@ class KerasModelsTest(tf.test.TestCase, parameterized.TestCase):
           replica_step,
           (net.trainable_variables, features),
       )
-      loss = distribution.reduce(
+      return distribution.reduce(
           tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
-      return loss
 
     step(next(iter(dataset)))
 
@@ -509,8 +502,7 @@ class KerasModelsXLATest(tf.test.TestCase, parameterized.TestCase):
         with tf.GradientTape() as tape:
           outputs = model(images)
           loss = keras.losses.mean_squared_error(targets, outputs)
-        grads = tape.gradient(loss, model.variables)
-        return grads
+        return tape.gradient(loss, model.variables)
 
       outputs = distribution.run(
           step_fn, args=(next(iterator),))
@@ -531,8 +523,7 @@ def _get_dataset():
 def _get_model():
   x = keras.layers.Input(shape=(3,), name="input")
   y = keras.layers.Dense(4, name="dense")(x)
-  model = keras.Model(x, y)
-  return model
+  return keras.Model(x, y)
 
 
 if __name__ == "__main__":

@@ -27,8 +27,7 @@ from keras.optimizers.optimizer_v2 import gradient_descent
 def get_model():
   x = keras.layers.Input(shape=(3,), name='input')
   y = keras.layers.Dense(4, name='dense')(x)
-  model = keras.Model(x, y)
-  return model
+  return keras.Model(x, y)
 
 
 class MirroredStrategyOptimizerV2Test(tf.test.TestCase, parameterized.TestCase):

@@ -31,9 +31,7 @@ def load_batch(fpath, label_key='labels'):
   with open(fpath, 'rb') as f:
     d = cPickle.load(f, encoding='bytes')
     # decode utf8
-    d_decoded = {}
-    for k, v in d.items():
-      d_decoded[k.decode('utf8')] = v
+    d_decoded = {k.decode('utf8'): v for k, v in d.items()}
     d = d_decoded
   data = d['data']
   labels = d[label_key]

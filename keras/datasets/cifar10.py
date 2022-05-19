@@ -89,7 +89,7 @@ def load_data():
   y_train = np.empty((num_train_samples,), dtype='uint8')
 
   for i in range(1, 6):
-    fpath = os.path.join(path, 'data_batch_' + str(i))
+    fpath = os.path.join(path, f'data_batch_{str(i)}')
     (x_train[(i - 1) * 10000:i * 10000, :, :, :],
      y_train[(i - 1) * 10000:i * 10000]) = load_batch(fpath)
 

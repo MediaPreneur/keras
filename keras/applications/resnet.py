@@ -115,13 +115,10 @@ def ResNet(stack_fn,
     A `keras.Model` instance.
   """
   global layers
-  if 'layers' in kwargs:
-    layers = kwargs.pop('layers')
-  else:
-    layers = VersionAwareLayers()
+  layers = kwargs.pop('layers') if 'layers' in kwargs else VersionAwareLayers()
   if kwargs:
-    raise ValueError('Unknown argument(s): %s' % (kwargs,))
-  if not (weights in {'imagenet', None} or tf.io.gfile.exists(weights)):
+    raise ValueError(f'Unknown argument(s): {kwargs}')
+  if weights not in {'imagenet', None} and not tf.io.gfile.exists(weights):
     raise ValueError('The `weights` argument should be either '
                      '`None` (random initialization), `imagenet` '
                      '(pre-training on ImageNet), '
@@ -143,11 +140,8 @@ def ResNet(stack_fn,
   if input_tensor is None:
     img_input = layers.Input(shape=input_shape)
   else:
-    if not backend.is_keras_tensor(input_tensor):
-      img_input = layers.Input(tensor=input_tensor, shape=input_shape)
-    else:
-      img_input = input_tensor
-
+    img_input = (input_tensor if backend.is_keras_tensor(input_tensor) else
+                 layers.Input(tensor=input_tensor, shape=input_shape))
   bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
 
   x = layers.ZeroPadding2D(
@@ -174,11 +168,10 @@ def ResNet(stack_fn,
     imagenet_utils.validate_activation(classifier_activation, weights)
     x = layers.Dense(classes, activation=classifier_activation,
                      name='predictions')(x)
-  else:
-    if pooling == 'avg':
-      x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
-    elif pooling == 'max':
-      x = layers.GlobalMaxPooling2D(name='max_pool')(x)
+  elif pooling == 'avg':
+    x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
+  elif pooling == 'max':
+    x = layers.GlobalMaxPooling2D(name='max_pool')(x)
 
   # Ensure that the model takes into account
   # any potential predecessors of `input_tensor`.
@@ -193,10 +186,10 @@ def ResNet(stack_fn,
   # Load weights.
   if (weights == 'imagenet') and (model_name in WEIGHTS_HASHES):
     if include_top:
-      file_name = model_name + '_weights_tf_dim_ordering_tf_kernels.h5'
+      file_name = f'{model_name}_weights_tf_dim_ordering_tf_kernels.h5'
       file_hash = WEIGHTS_HASHES[model_name][0]
     else:
-      file_name = model_name + '_weights_tf_dim_ordering_tf_kernels_notop.h5'
+      file_name = f'{model_name}_weights_tf_dim_ordering_tf_kernels_notop.h5'
       file_hash = WEIGHTS_HASHES[model_name][1]
     weights_path = data_utils.get_file(
         file_name,
@@ -229,29 +222,29 @@ def block1(x, filters, kernel_size=3, stride=1, conv_shortcut=True, name=None):
 
   if conv_shortcut:
     shortcut = layers.Conv2D(
-        4 * filters, 1, strides=stride, name=name + '_0_conv')(x)
+        4 * filters, 1, strides=stride, name=f'{name}_0_conv')(x)
     shortcut = layers.BatchNormalization(
-        axis=bn_axis, epsilon=1.001e-5, name=name + '_0_bn')(shortcut)
+        axis=bn_axis, epsilon=1.001e-5, name=f'{name}_0_bn')(shortcut)
   else:
     shortcut = x
 
-  x = layers.Conv2D(filters, 1, strides=stride, name=name + '_1_conv')(x)
+  x = layers.Conv2D(filters, 1, strides=stride, name=f'{name}_1_conv')(x)
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_1_bn')(x)
-  x = layers.Activation('relu', name=name + '_1_relu')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_1_bn')(x)
+  x = layers.Activation('relu', name=f'{name}_1_relu')(x)
 
   x = layers.Conv2D(
-      filters, kernel_size, padding='SAME', name=name + '_2_conv')(x)
+      filters, kernel_size, padding='SAME', name=f'{name}_2_conv')(x)
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_2_bn')(x)
-  x = layers.Activation('relu', name=name + '_2_relu')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_2_bn')(x)
+  x = layers.Activation('relu', name=f'{name}_2_relu')(x)
 
-  x = layers.Conv2D(4 * filters, 1, name=name + '_3_conv')(x)
+  x = layers.Conv2D(4 * filters, 1, name=f'{name}_3_conv')(x)
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_3_bn')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_3_bn')(x)
 
-  x = layers.Add(name=name + '_add')([shortcut, x])
-  x = layers.Activation('relu', name=name + '_out')(x)
+  x = layers.Add(name=f'{name}_add')([shortcut, x])
+  x = layers.Activation('relu', name=f'{name}_out')(x)
   return x
 
 
@@ -268,9 +261,9 @@ def stack1(x, filters, blocks, stride1=2, name=None):
   Returns:
     Output tensor for the stacked blocks.
   """
-  x = block1(x, filters, stride=stride1, name=name + '_block1')
+  x = block1(x, filters, stride=stride1, name=f'{name}_block1')
   for i in range(2, blocks + 1):
-    x = block1(x, filters, conv_shortcut=False, name=name + '_block' + str(i))
+    x = block1(x, filters, conv_shortcut=False, name=f'{name}_block{str(i)}')
   return x
 
 
@@ -292,34 +285,35 @@ def block2(x, filters, kernel_size=3, stride=1, conv_shortcut=False, name=None):
   bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
 
   preact = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_preact_bn')(x)
-  preact = layers.Activation('relu', name=name + '_preact_relu')(preact)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_preact_bn')(x)
+  preact = layers.Activation('relu', name=f'{name}_preact_relu')(preact)
 
   if conv_shortcut:
     shortcut = layers.Conv2D(
-        4 * filters, 1, strides=stride, name=name + '_0_conv')(preact)
+        4 * filters, 1, strides=stride, name=f'{name}_0_conv')(preact)
   else:
     shortcut = layers.MaxPooling2D(1, strides=stride)(x) if stride > 1 else x
 
   x = layers.Conv2D(
-      filters, 1, strides=1, use_bias=False, name=name + '_1_conv')(preact)
+      filters, 1, strides=1, use_bias=False, name=f'{name}_1_conv')(preact)
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_1_bn')(x)
-  x = layers.Activation('relu', name=name + '_1_relu')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_1_bn')(x)
+  x = layers.Activation('relu', name=f'{name}_1_relu')(x)
 
-  x = layers.ZeroPadding2D(padding=((1, 1), (1, 1)), name=name + '_2_pad')(x)
+  x = layers.ZeroPadding2D(padding=((1, 1), (1, 1)), name=f'{name}_2_pad')(x)
   x = layers.Conv2D(
       filters,
       kernel_size,
       strides=stride,
       use_bias=False,
-      name=name + '_2_conv')(x)
+      name=f'{name}_2_conv',
+  )(x)
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_2_bn')(x)
-  x = layers.Activation('relu', name=name + '_2_relu')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_2_bn')(x)
+  x = layers.Activation('relu', name=f'{name}_2_relu')(x)
 
-  x = layers.Conv2D(4 * filters, 1, name=name + '_3_conv')(x)
-  x = layers.Add(name=name + '_out')([shortcut, x])
+  x = layers.Conv2D(4 * filters, 1, name=f'{name}_3_conv')(x)
+  x = layers.Add(name=f'{name}_out')([shortcut, x])
   return x
 
 
@@ -336,10 +330,10 @@ def stack2(x, filters, blocks, stride1=2, name=None):
   Returns:
       Output tensor for the stacked blocks.
   """
-  x = block2(x, filters, conv_shortcut=True, name=name + '_block1')
+  x = block2(x, filters, conv_shortcut=True, name=f'{name}_block1')
   for i in range(2, blocks):
-    x = block2(x, filters, name=name + '_block' + str(i))
-  x = block2(x, filters, stride=stride1, name=name + '_block' + str(blocks))
+    x = block2(x, filters, name=f'{name}_block{str(i)}')
+  x = block2(x, filters, stride=stride1, name=f'{name}_block{str(blocks)}')
   return x
 
 
@@ -373,42 +367,45 @@ def block3(x,
         1,
         strides=stride,
         use_bias=False,
-        name=name + '_0_conv')(x)
+        name=f'{name}_0_conv',
+    )(x)
     shortcut = layers.BatchNormalization(
-        axis=bn_axis, epsilon=1.001e-5, name=name + '_0_bn')(shortcut)
+        axis=bn_axis, epsilon=1.001e-5, name=f'{name}_0_bn')(shortcut)
   else:
     shortcut = x
 
-  x = layers.Conv2D(filters, 1, use_bias=False, name=name + '_1_conv')(x)
+  x = layers.Conv2D(filters, 1, use_bias=False, name=f'{name}_1_conv')(x)
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_1_bn')(x)
-  x = layers.Activation('relu', name=name + '_1_relu')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_1_bn')(x)
+  x = layers.Activation('relu', name=f'{name}_1_relu')(x)
 
   c = filters // groups
-  x = layers.ZeroPadding2D(padding=((1, 1), (1, 1)), name=name + '_2_pad')(x)
+  x = layers.ZeroPadding2D(padding=((1, 1), (1, 1)), name=f'{name}_2_pad')(x)
   x = layers.DepthwiseConv2D(
       kernel_size,
       strides=stride,
       depth_multiplier=c,
       use_bias=False,
-      name=name + '_2_conv')(x)
+      name=f'{name}_2_conv',
+  )(x)
   x_shape = backend.shape(x)[:-1]
   x = backend.reshape(x, backend.concatenate([x_shape, (groups, c, c)]))
   x = layers.Lambda(
       lambda x: sum(x[:, :, :, :, i] for i in range(c)),
-      name=name + '_2_reduce')(x)
+      name=f'{name}_2_reduce',
+  )(x)
   x = backend.reshape(x, backend.concatenate([x_shape, (filters,)]))
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_2_bn')(x)
-  x = layers.Activation('relu', name=name + '_2_relu')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_2_bn')(x)
+  x = layers.Activation('relu', name=f'{name}_2_relu')(x)
 
   x = layers.Conv2D(
-      (64 // groups) * filters, 1, use_bias=False, name=name + '_3_conv')(x)
+      (64 // groups) * filters, 1, use_bias=False, name=f'{name}_3_conv')(x)
   x = layers.BatchNormalization(
-      axis=bn_axis, epsilon=1.001e-5, name=name + '_3_bn')(x)
+      axis=bn_axis, epsilon=1.001e-5, name=f'{name}_3_bn')(x)
 
-  x = layers.Add(name=name + '_add')([shortcut, x])
-  x = layers.Activation('relu', name=name + '_out')(x)
+  x = layers.Add(name=f'{name}_add')([shortcut, x])
+  x = layers.Activation('relu', name=f'{name}_out')(x)
   return x
 
 
@@ -426,14 +423,15 @@ def stack3(x, filters, blocks, stride1=2, groups=32, name=None):
   Returns:
     Output tensor for the stacked blocks.
   """
-  x = block3(x, filters, stride=stride1, groups=groups, name=name + '_block1')
+  x = block3(x, filters, stride=stride1, groups=groups, name=f'{name}_block1')
   for i in range(2, blocks + 1):
     x = block3(
         x,
         filters,
         groups=groups,
         conv_shortcut=False,
-        name=name + '_block' + str(i))
+        name=f'{name}_block{str(i)}',
+    )
   return x
 
 

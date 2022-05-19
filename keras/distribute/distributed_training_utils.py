@@ -48,9 +48,8 @@ def call_replica_local_fn(fn, *args, **kwargs):
   strategy = None
   if 'strategy' in kwargs:
     strategy = kwargs.pop('strategy')
-  else:
-    if tf.distribute.has_strategy():
-      strategy = tf.distribute.get_strategy()
+  elif tf.distribute.has_strategy():
+    strategy = tf.distribute.get_strategy()
 
   # TODO(b/120571621): TPUStrategy does not implement replica-local variables.
   is_tpu = backend.is_tpu_strategy(strategy)

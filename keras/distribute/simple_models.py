@@ -129,8 +129,7 @@ class SimpleTFModuleModel(model_collection_base.ModelAndInput):
   """A simple model based on tf.Module and its data."""
 
   def get_model(self, **kwargs):
-    model = _SimpleModule()
-    return model
+    return _SimpleModule()
 
   def get_data(self):
     return _get_data_for_simple_models()
