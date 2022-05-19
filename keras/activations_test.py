@@ -51,11 +51,11 @@ class KerasActivationsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_serialization_v2(self):
     activation_map = {tf.math.softmax: 'softmax'}
-    for fn_v2_key in activation_map:
+    for fn_v2_key, value in activation_map.items():
       fn_v2 = activations.get(fn_v2_key)
       config = activations.serialize(fn_v2)
       fn = activations.deserialize(config)
-      assert fn.__name__ == activation_map[fn_v2_key]
+      assert fn.__name__ == value
 
   def test_serialization_with_layers(self):
     activation = activation_layers.LeakyReLU(alpha=0.1)
@@ -157,9 +157,8 @@ class KerasActivationsTest(tf.test.TestCase, parameterized.TestCase):
     def ref_sigmoid(x):
       if x >= 0:
         return 1 / (1 + np.exp(-x))
-      else:
-        z = np.exp(x)
-        return z / (1 + z)
+      z = np.exp(x)
+      return z / (1 + z)
     sigmoid = np.vectorize(ref_sigmoid)
 
     x = backend.placeholder(ndim=2)
@@ -172,8 +171,7 @@ class KerasActivationsTest(tf.test.TestCase, parameterized.TestCase):
   def test_hard_sigmoid(self):
     def ref_hard_sigmoid(x):
       x = (x * 0.2) + 0.5
-      z = 0.0 if x <= 0 else (1.0 if x >= 1 else x)
-      return z
+      return 0.0 if x <= 0 else (1.0 if x >= 1 else x)
     hard_sigmoid = np.vectorize(ref_hard_sigmoid)
     x = backend.placeholder(ndim=2)
     f = backend.function([x], [activations.hard_sigmoid(x)])
@@ -200,9 +198,8 @@ class KerasActivationsTest(tf.test.TestCase, parameterized.TestCase):
       if approximate:
         return 0.5 * x * (1.0 + np.tanh(
             np.sqrt(2.0 / np.pi) * (x + 0.044715 * np.power(x, 3))))
-      else:
-        from scipy.stats import norm  # pylint: disable=g-import-not-at-top
-        return x * norm.cdf(x)
+      from scipy.stats import norm  # pylint: disable=g-import-not-at-top
+      return x * norm.cdf(x)
 
     x = backend.placeholder(ndim=2)
     f = backend.function([x], [activations.gelu(x)])

@@ -33,8 +33,8 @@ class AntirectifierBenchmark(tf.test.Benchmark):
 
   def _build_model(self):
     """Model from https://keras.io/examples/keras_recipes/antirectifier/."""
-    model = tf.keras.Sequential([
-        tf.keras.Input(shape=(784,)),
+    return tf.keras.Sequential([
+        tf.keras.Input(shape=(784, )),
         tf.keras.layers.Dense(256),
         Antirectifier(),
         tf.keras.layers.Dense(256),
@@ -42,7 +42,6 @@ class AntirectifierBenchmark(tf.test.Benchmark):
         tf.keras.layers.Dropout(0.5),
         tf.keras.layers.Dense(10),
     ])
-    return model
 
   # In each benchmark test, the required arguments for the
   # method `measure_performance` include:
@@ -148,8 +147,7 @@ class Antirectifier(tf.keras.layers.Layer):
     pos = tf.nn.relu(inputs)
     neg = tf.nn.relu(-inputs)
     concatenated = tf.concat([pos, neg], axis=-1)
-    mixed = tf.matmul(concatenated, self.kernel)
-    return mixed
+    return tf.matmul(concatenated, self.kernel)
 
   def get_config(self):
     # Implement get_config to enable serialization. This is optional.

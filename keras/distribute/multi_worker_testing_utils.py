@@ -14,6 +14,7 @@
 # ==============================================================================
 """Utilities for testing multi-worker distribution strategies with Keras."""
 
+
 import tensorflow.compat.v2 as tf
 
 import threading
@@ -28,7 +29,7 @@ from tensorflow.python.training.server_lib import ClusterSpec
 _portpicker_import_error = None
 try:
   import portpicker  # pylint: disable=g-import-not-at-top
-except (ImportError, ModuleNotFoundError) as _error:  # pylint: disable=invalid-name
+except ImportError as _error:
   _portpicker_import_error = _error
   portpicker = None
 
@@ -130,13 +131,13 @@ def _create_cluster(num_workers,
 
   cluster_dict = {}
   if num_workers > 0:
-    cluster_dict[worker_name] = ["localhost:%s" % port for port in worker_ports]
+    cluster_dict[worker_name] = [f"localhost:{port}" for port in worker_ports]
   if num_ps > 0:
-    cluster_dict[ps_name] = ["localhost:%s" % port for port in ps_ports]
+    cluster_dict[ps_name] = [f"localhost:{port}" for port in ps_ports]
   if has_eval:
-    cluster_dict["evaluator"] = ["localhost:%s" % pick_unused_port()]
+    cluster_dict["evaluator"] = [f"localhost:{pick_unused_port()}"]
   if has_chief:
-    cluster_dict[chief_name] = ["localhost:%s" % pick_unused_port()]
+    cluster_dict[chief_name] = [f"localhost:{pick_unused_port()}"]
 
   cs = tf.train.ClusterSpec(cluster_dict)
 

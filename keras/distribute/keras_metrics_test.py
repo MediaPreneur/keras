@@ -100,10 +100,12 @@ class KerasMetricsTest(tf.test.TestCase, parameterized.TestCase):
       for i in range(4):
         batches_consumed += batches_per_update
         self.evaluate(updates)
-        self.assertAllClose(expected_fn(batches_consumed),
-                            self.evaluate(metric.result()),
-                            0.001,
-                            msg="After update #" + str(i+1))
+        self.assertAllClose(
+            expected_fn(batches_consumed),
+            self.evaluate(metric.result()),
+            0.001,
+            msg=f"After update #{str(i+1)}",
+        )
         if batches_consumed >= 4:  # Consume 4 input batches in total.
           break
 

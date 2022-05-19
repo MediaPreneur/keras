@@ -169,7 +169,7 @@ def MobileNetV3(stack_fn,
                 dropout_rate=0.2,
                 classifier_activation='softmax',
                 include_preprocessing=True):
-  if not (weights in {'imagenet', None} or tf.io.gfile.exists(weights)):
+  if weights not in {'imagenet', None} and not tf.io.gfile.exists(weights):
     raise ValueError('The `weights` argument should be either '
                      '`None` (random initialization), `imagenet` '
                      '(pre-training on ImageNet), '
@@ -194,26 +194,24 @@ def MobileNetV3(stack_fn,
         raise ValueError('input_tensor: ', input_tensor,
                          'is not type input_tensor.  '
                          f'Received type(input_tensor)={type(input_tensor)}')
-    if is_input_t_tensor:
-      if backend.image_data_format() == 'channels_first':
-        if backend.int_shape(input_tensor)[1] != input_shape[1]:
-          raise ValueError('When backend.image_data_format()=channels_first, '
-                           'input_shape[1] must equal '
-                           'backend.int_shape(input_tensor)[1].  Received '
-                           f'input_shape={input_shape}, '
-                           'backend.int_shape(input_tensor)='
-                           f'{backend.int_shape(input_tensor)}')
-      else:
-        if backend.int_shape(input_tensor)[2] != input_shape[1]:
-          raise ValueError('input_shape[1] must equal '
-                           'backend.int_shape(input_tensor)[2].  Received '
-                           f'input_shape={input_shape}, '
-                           'backend.int_shape(input_tensor)='
-                           f'{backend.int_shape(input_tensor)}')
-    else:
+    if not is_input_t_tensor:
       raise ValueError('input_tensor specified: ', input_tensor,
                        'is not a keras tensor')
 
+    if backend.image_data_format() == 'channels_first':
+      if backend.int_shape(input_tensor)[1] != input_shape[1]:
+        raise ValueError('When backend.image_data_format()=channels_first, '
+                         'input_shape[1] must equal '
+                         'backend.int_shape(input_tensor)[1].  Received '
+                         f'input_shape={input_shape}, '
+                         'backend.int_shape(input_tensor)='
+                         f'{backend.int_shape(input_tensor)}')
+    elif backend.int_shape(input_tensor)[2] != input_shape[1]:
+      raise ValueError('input_shape[1] must equal '
+                       'backend.int_shape(input_tensor)[2].  Received '
+                       f'input_shape={input_shape}, '
+                       'backend.int_shape(input_tensor)='
+                       f'{backend.int_shape(input_tensor)}')
   # If input_shape is None, infer shape from input_tensor
   if input_shape is None and input_tensor is not None:
 
@@ -261,11 +259,8 @@ def MobileNetV3(stack_fn,
   if input_tensor is None:
     img_input = layers.Input(shape=input_shape)
   else:
-    if not backend.is_keras_tensor(input_tensor):
-      img_input = layers.Input(tensor=input_tensor, shape=input_shape)
-    else:
-      img_input = input_tensor
-
+    img_input = (input_tensor if backend.is_keras_tensor(input_tensor) else
+                 layers.Input(tensor=input_tensor, shape=input_shape))
   channel_axis = 1 if backend.image_data_format() == 'channels_first' else -1
 
   if minimalistic:
@@ -327,11 +322,10 @@ def MobileNetV3(stack_fn,
     imagenet_utils.validate_activation(classifier_activation, weights)
     x = layers.Activation(activation=classifier_activation,
                           name='Predictions')(x)
-  else:
-    if pooling == 'avg':
-      x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
-    elif pooling == 'max':
-      x = layers.GlobalMaxPooling2D(name='max_pool')(x)
+  elif pooling == 'avg':
+    x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
+  elif pooling == 'max':
+    x = layers.GlobalMaxPooling2D(name='max_pool')(x)
   # Ensure that the model takes into account
   # any potential predecessors of `input_tensor`.
   if input_tensor is not None:
@@ -340,17 +334,16 @@ def MobileNetV3(stack_fn,
     inputs = img_input
 
   # Create model.
-  model = models.Model(inputs, x, name='MobilenetV3' + model_type)
+  model = models.Model(inputs, x, name=f'MobilenetV3{model_type}')
 
   # Load weights.
   if weights == 'imagenet':
-    model_name = '{}{}_224_{}_float'.format(
-        model_type, '_minimalistic' if minimalistic else '', str(alpha))
+    model_name = f"{model_type}{'_minimalistic' if minimalistic else ''}_224_{str(alpha)}_float"
     if include_top:
-      file_name = 'weights_mobilenet_v3_' + model_name + '.h5'
+      file_name = f'weights_mobilenet_v3_{model_name}.h5'
       file_hash = WEIGHTS_HASHES[model_name][0]
     else:
-      file_name = 'weights_mobilenet_v3_' + model_name + '_no_top_v2.h5'
+      file_name = f'weights_mobilenet_v3_{model_name}_no_top_v2.h5'
       file_hash = WEIGHTS_HASHES[model_name][1]
     weights_path = data_utils.get_file(
         file_name,
@@ -479,23 +472,22 @@ def _depth(v, divisor=8, min_value=None):
 
 def _se_block(inputs, filters, se_ratio, prefix):
   x = layers.GlobalAveragePooling2D(
-      keepdims=True, name=prefix + 'squeeze_excite/AvgPool')(
-          inputs)
+      keepdims=True, name=f'{prefix}squeeze_excite/AvgPool')(inputs)
   x = layers.Conv2D(
       _depth(filters * se_ratio),
       kernel_size=1,
       padding='same',
-      name=prefix + 'squeeze_excite/Conv')(
-          x)
-  x = layers.ReLU(name=prefix + 'squeeze_excite/Relu')(x)
+      name=f'{prefix}squeeze_excite/Conv',
+  )(x)
+  x = layers.ReLU(name=f'{prefix}squeeze_excite/Relu')(x)
   x = layers.Conv2D(
       filters,
       kernel_size=1,
       padding='same',
-      name=prefix + 'squeeze_excite/Conv_1')(
-          x)
+      name=f'{prefix}squeeze_excite/Conv_1',
+  )(x)
   x = hard_sigmoid(x)
-  x = layers.Multiply(name=prefix + 'squeeze_excite/Mul')([inputs, x])
+  x = layers.Multiply(name=f'{prefix}squeeze_excite/Mul')([inputs, x])
   return x
 
 
@@ -507,40 +499,40 @@ def _inverted_res_block(x, expansion, filters, kernel_size, stride, se_ratio,
   infilters = backend.int_shape(x)[channel_axis]
   if block_id:
     # Expand
-    prefix = 'expanded_conv_{}/'.format(block_id)
+    prefix = f'expanded_conv_{block_id}/'
     x = layers.Conv2D(
         _depth(infilters * expansion),
         kernel_size=1,
         padding='same',
         use_bias=False,
-        name=prefix + 'expand')(
-            x)
+        name=f'{prefix}expand',
+    )(x)
     x = layers.BatchNormalization(
         axis=channel_axis,
         epsilon=1e-3,
         momentum=0.999,
-        name=prefix + 'expand/BatchNorm')(
-            x)
+        name=f'{prefix}expand/BatchNorm',
+    )(x)
     x = activation(x)
 
   if stride == 2:
     x = layers.ZeroPadding2D(
         padding=imagenet_utils.correct_pad(x, kernel_size),
-        name=prefix + 'depthwise/pad')(
-            x)
+        name=f'{prefix}depthwise/pad',
+    )(x)
   x = layers.DepthwiseConv2D(
       kernel_size,
       strides=stride,
       padding='same' if stride == 1 else 'valid',
       use_bias=False,
-      name=prefix + 'depthwise')(
-          x)
+      name=f'{prefix}depthwise',
+  )(x)
   x = layers.BatchNormalization(
       axis=channel_axis,
       epsilon=1e-3,
       momentum=0.999,
-      name=prefix + 'depthwise/BatchNorm')(
-          x)
+      name=f'{prefix}depthwise/BatchNorm',
+  )(x)
   x = activation(x)
 
   if se_ratio:
@@ -551,17 +543,17 @@ def _inverted_res_block(x, expansion, filters, kernel_size, stride, se_ratio,
       kernel_size=1,
       padding='same',
       use_bias=False,
-      name=prefix + 'project')(
-          x)
+      name=f'{prefix}project',
+  )(x)
   x = layers.BatchNormalization(
       axis=channel_axis,
       epsilon=1e-3,
       momentum=0.999,
-      name=prefix + 'project/BatchNorm')(
-          x)
+      name=f'{prefix}project/BatchNorm',
+  )(x)
 
   if stride == 1 and infilters == filters:
-    x = layers.Add(name=prefix + 'Add')([shortcut, x])
+    x = layers.Add(name=f'{prefix}Add')([shortcut, x])
   return x
 
 

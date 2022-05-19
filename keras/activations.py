@@ -76,18 +76,17 @@ def softmax(x, axis=-1):
 
   >>> layer = tf.keras.layers.Dense(32, activation=tf.keras.activations.softmax)
   """
-  if x.shape.rank > 1:
-    if isinstance(axis, int):
-      output = tf.nn.softmax(x, axis=axis)
-    else:
-      # nn.softmax does not support tuple axis.
-      e = tf.exp(x - tf.reduce_max(x, axis=axis, keepdims=True))
-      s = tf.reduce_sum(e, axis=axis, keepdims=True)
-      output = e / s
-  else:
+  if x.shape.rank <= 1:
     raise ValueError('Cannot apply softmax to a tensor that is 1D. '
                      f'Received input: {x}')
 
+  if isinstance(axis, int):
+    output = tf.nn.softmax(x, axis=axis)
+  else:
+    # nn.softmax does not support tuple axis.
+    e = tf.exp(x - tf.reduce_max(x, axis=axis, keepdims=True))
+    s = tf.reduce_sum(e, axis=axis, keepdims=True)
+    output = e / s
   # Cache the logits to use for crossentropy loss.
   output._keras_logits = x  # pylint: disable=protected-access
   return output

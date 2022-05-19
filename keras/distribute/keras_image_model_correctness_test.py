@@ -88,7 +88,7 @@ class DistributionStrategyCnnCorrectnessTest(
         count=keras_correctness_test_base._GLOBAL_BATCH_SIZE *
         keras_correctness_test_base._EVAL_STEPS)
     x_predict = x_train
-    return x_train, y_train, x_predict
+    return x_predict, y_train, x_predict
 
   def get_data_with_partial_last_batch_eval(self):
     x_train, y_train = self._get_data(count=1280)

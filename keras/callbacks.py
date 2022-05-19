@@ -149,7 +149,7 @@ def set_callback_parameters(callback_list,
   if mode != ModeKeys.PREDICT:
     callback_metrics = copy.copy(metric_names)
     if do_validation:
-      callback_metrics += ['val_' + n for n in metric_names]
+      callback_metrics += [f'val_{n}' for n in metric_names]
   callback_params = {
       'batch_size': batch_size,
       'epochs': epochs,
@@ -913,11 +913,10 @@ class BaseLogger(Callback):
     for k, v in logs.items():
       if k in self.stateful_metrics:
         self.totals[k] = v
+      elif k in self.totals:
+        self.totals[k] += v * batch_size
       else:
-        if k in self.totals:
-          self.totals[k] += v * batch_size
-        else:
-          self.totals[k] = v * batch_size
+        self.totals[k] = v * batch_size
 
   def on_epoch_end(self, epoch, logs=None):
     if logs is not None:
@@ -1066,7 +1065,8 @@ class ProgbarLogger(Callback):
       # updated metrics after `MetricsContainer` is built in the first train
       # step.
       self.stateful_metrics = self.stateful_metrics.union(
-          set(m.name for m in self.model.metrics))
+          {m.name
+           for m in self.model.metrics})
 
     if self.progbar is None:
       self.progbar = Progbar(
@@ -1296,13 +1296,12 @@ class ModelCheckpoint(Callback):
         raise TypeError(
             'If save_weights_only is True, then `options` must be '
             f'either None or a tf.train.CheckpointOptions. Got {options}.')
+    elif options is None or isinstance(options, tf.saved_model.SaveOptions):
+      self._options = options or tf.saved_model.SaveOptions()
     else:
-      if options is None or isinstance(options, tf.saved_model.SaveOptions):
-        self._options = options or tf.saved_model.SaveOptions()
-      else:
-        raise TypeError(
-            'If save_weights_only is False, then `options` must be '
-            f'either None or a tf.saved_model.SaveOptions. Got {options}.')
+      raise TypeError(
+          'If save_weights_only is False, then `options` must be '
+          f'either None or a tf.saved_model.SaveOptions. Got {options}.')
 
     # Deprecated field `load_weights_on_restart` is for loading the checkpoint
     # file from `filepath` at the start of `model.fit()`
@@ -1337,15 +1336,14 @@ class ModelCheckpoint(Callback):
       self.monitor_op = np.greater
       if self.best is None:
         self.best = -np.Inf
+    elif 'acc' in self.monitor or self.monitor.startswith('fmeasure'):
+      self.monitor_op = np.greater
+      if self.best is None:
+        self.best = -np.Inf
     else:
-      if 'acc' in self.monitor or self.monitor.startswith('fmeasure'):
-        self.monitor_op = np.greater
-        if self.best is None:
-          self.best = -np.Inf
-      else:
-        self.monitor_op = np.less
-        if self.best is None:
-          self.best = np.Inf
+      self.monitor_op = np.less
+      if self.best is None:
+        self.best = np.Inf
 
     if self.save_freq != 'epoch' and not isinstance(self.save_freq, int):
       raise ValueError(
@@ -1429,24 +1427,22 @@ class ModelCheckpoint(Callback):
           if current is None:
             logging.warning('Can save best model only with %s available, '
                             'skipping.', self.monitor)
-          else:
-            if self.monitor_op(current, self.best):
-              if self.verbose > 0:
-                io_utils.print_msg(
-                    f'\nEpoch {epoch + 1}: {self.monitor} improved '
-                    f'from {self.best:.5f} to {current:.5f}, '
-                    f'saving model to {filepath}')
-              self.best = current
-              if self.save_weights_only:
-                self.model.save_weights(
-                    filepath, overwrite=True, options=self._options)
-              else:
-                self.model.save(filepath, overwrite=True, options=self._options)
+          elif self.monitor_op(current, self.best):
+            if self.verbose > 0:
+              io_utils.print_msg(
+                  f'\nEpoch {epoch + 1}: {self.monitor} improved '
+                  f'from {self.best:.5f} to {current:.5f}, '
+                  f'saving model to {filepath}')
+            self.best = current
+            if self.save_weights_only:
+              self.model.save_weights(
+                  filepath, overwrite=True, options=self._options)
             else:
-              if self.verbose > 0:
-                io_utils.print_msg(
-                    f'\nEpoch {epoch + 1}: '
-                    f'{self.monitor} did not improve from {self.best:.5f}')
+              self.model.save(filepath, overwrite=True, options=self._options)
+          elif self.verbose > 0:
+            io_utils.print_msg(
+                f'\nEpoch {epoch + 1}: '
+                f'{self.monitor} did not improve from {self.best:.5f}')
         else:
           if self.verbose > 0:
             io_utils.print_msg(
@@ -1503,8 +1499,7 @@ class ModelCheckpoint(Callback):
     if filepath.endswith('.h5'):
       return tf.io.gfile.exists(filepath)
     tf_saved_model_exists = tf.io.gfile.exists(filepath)
-    tf_weights_only_checkpoint_exists = tf.io.gfile.exists(
-        filepath + '.index')
+    tf_weights_only_checkpoint_exists = tf.io.gfile.exists(f'{filepath}.index')
     return tf_saved_model_exists or tf_weights_only_checkpoint_exists
 
   def _get_most_recently_modified_file_matching_pattern(self, pattern):
@@ -1826,12 +1821,11 @@ class EarlyStopping(Callback):
       self.monitor_op = np.less
     elif mode == 'max':
       self.monitor_op = np.greater
-    else:
-      if (self.monitor.endswith('acc') or self.monitor.endswith('accuracy') or
+    elif (self.monitor.endswith('acc') or self.monitor.endswith('accuracy') or
           self.monitor.endswith('auc')):
-        self.monitor_op = np.greater
-      else:
-        self.monitor_op = np.less
+      self.monitor_op = np.greater
+    else:
+      self.monitor_op = np.less
 
     if self.monitor_op == np.greater:
       self.min_delta *= 1
@@ -1934,16 +1928,12 @@ class RemoteMonitor(Callback):
     if requests is None:
       raise ImportError('RemoteMonitor requires the `requests` library.')
     logs = logs or {}
-    send = {}
-    send['epoch'] = epoch
+    send = {'epoch': epoch}
     for k, v in logs.items():
       # np.ndarray and np.generic are not scalar types
       # therefore we must unwrap their scalar values and
       # pass to the json-serializable dict 'send'
-      if isinstance(v, (np.ndarray, np.generic)):
-        send[k] = v.item()
-      else:
-        send[k] = v
+      send[k] = v.item() if isinstance(v, (np.ndarray, np.generic)) else v
     try:
       if self.send_as_json:
         requests.post(self.root + self.path, json=send, headers=self.headers)
@@ -2255,10 +2245,7 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
 
     supported_kwargs = {'write_grads', 'embeddings_layer_names',
                         'embeddings_data', 'batch_size'}
-    unrecognized_kwargs = set(kwargs.keys()) - supported_kwargs
-
-    # Only allow kwargs that were supported in V1.
-    if unrecognized_kwargs:
+    if unrecognized_kwargs := set(kwargs.keys()) - supported_kwargs:
       raise ValueError(
           'Unrecognized arguments in `TensorBoard` Callback: '
           f'{unrecognized_kwargs}. Supported kwargs are: {supported_kwargs}')
@@ -2319,10 +2306,9 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
     """Writes Keras graph network summary to TensorBoard."""
     with self._train_writer.as_default():
       with tf.summary.record_if(True):
-        summary_writable = (
-            self.model._is_graph_network or  # pylint: disable=protected-access
-            self.model.__class__.__name__ == 'Sequential')  # pylint: disable=protected-access
-        if summary_writable:
+        if summary_writable := (
+            self.model._is_graph_network or self.model.__class__.__name__  # pylint: disable=protected-access
+            == 'Sequential'):
           keras_model_summary('keras', self.model, step=0)
 
   def _configure_embeddings(self):
@@ -2344,9 +2330,8 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
         if self.embeddings_metadata is not None:
           if isinstance(self.embeddings_metadata, str):
             embedding.metadata_path = self.embeddings_metadata
-          else:
-            if layer.name in self.embeddings_metadata.keys():
-              embedding.metadata_path = self.embeddings_metadata.pop(layer.name)
+          elif layer.name in self.embeddings_metadata.keys():
+            embedding.metadata_path = self.embeddings_metadata.pop(layer.name)
 
     if self.embeddings_metadata and not isinstance(self.embeddings_metadata,
                                                    str):
@@ -2437,7 +2422,7 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
     self._is_tracing = False
 
     # Setting `profile_batch=0` disables profiling.
-    self._should_trace = not (self._start_batch == 0 and self._stop_batch == 0)
+    self._should_trace = self._start_batch != 0 or self._stop_batch != 0
 
   def on_train_begin(self, logs=None):
     self._global_train_batch = 0
@@ -2461,9 +2446,10 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
       with tf.summary.record_if(True), self._val_writer.as_default():
         for name, value in logs.items():
           tf.summary.scalar(
-              'evaluation_' + name + '_vs_iterations',
+              f'evaluation_{name}_vs_iterations',
               value,
-              step=self.model.optimizer.iterations.read_value())
+              step=self.model.optimizer.iterations.read_value(),
+          )
     self._pop_writer()
 
   def _implements_train_batch_hooks(self):
@@ -2535,9 +2521,8 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
   def _compute_steps_per_second(self):
     current_iteration = self.model.optimizer.iterations.numpy()
     time_since_epoch_begin = time.time() - self._epoch_start_time
-    steps_per_second = ((current_iteration - self._previous_epoch_iterations) /
-                        time_since_epoch_begin)
-    return steps_per_second
+    return (current_iteration -
+            self._previous_epoch_iterations) / time_since_epoch_begin
 
   def _log_epoch_metrics(self, epoch, logs):
     """Writes epoch metrics out as scalar summaries.
@@ -2559,12 +2544,12 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
       if train_logs:
         with self._train_writer.as_default():
           for name, value in train_logs.items():
-            tf.summary.scalar('epoch_' + name, value, step=epoch)
+            tf.summary.scalar(f'epoch_{name}', value, step=epoch)
       if val_logs:
         with self._val_writer.as_default():
           for name, value in val_logs.items():
             name = name[4:]  # Remove 'val_' prefix.
-            tf.summary.scalar('epoch_' + name, value, step=epoch)
+            tf.summary.scalar(f'epoch_{name}', value, step=epoch)
 
   def _log_weights(self, epoch):
     """Logs the weights of the Model to TensorBoard."""
@@ -2574,11 +2559,11 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
           for weight in layer.weights:
             weight_name = weight.name.replace(':', '_')
             # Add a suffix to prevent summary tag name collision.
-            histogram_weight_name = weight_name + '/histogram'
+            histogram_weight_name = f'{weight_name}/histogram'
             tf.summary.histogram(histogram_weight_name, weight, step=epoch)
             if self.write_images:
               # Add a suffix to prevent summary tag name collision.
-              image_weight_name = weight_name + '/image'
+              image_weight_name = f'{weight_name}/image'
               self._log_weight_as_image(weight, image_weight_name, epoch)
         self._train_writer.flush()
 
@@ -2608,7 +2593,7 @@ class TensorBoard(Callback, version_utils.TensorBoardVersionSelector):
 
   def _log_embeddings(self, epoch):
     embeddings_ckpt = os.path.join(self._log_write_dir, 'train',
-                                   'keras_embedding.ckpt-{}'.format(epoch))
+                                   f'keras_embedding.ckpt-{epoch}')
     self.model.save_weights(embeddings_ckpt)
 
   def _start_profiler(self, logdir):

@@ -48,9 +48,7 @@ class HierarchicalRNNBenchmark(tf.test.Benchmark):
     outputs = tf.keras.layers.Dense(
         self.num_classes, activation='softmax')(
             encoded_cols)
-    model = tf.keras.Model(inputs, outputs)
-
-    return model
+    return tf.keras.Model(inputs, outputs)
 
   # In each benchmark test, the required arguments for the
   # method `measure_performance` include:

@@ -44,7 +44,7 @@ class CustomMnistBenchmark(tf.test.Benchmark):
 
   def _build_model(self):
     """Model from https://keras.io/examples/vision/mnist_convnet/."""
-    model = tf.keras.Sequential([
+    return tf.keras.Sequential([
         tf.keras.Input(shape=self.input_shape),
         tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
@@ -54,8 +54,6 @@ class CustomMnistBenchmark(tf.test.Benchmark):
         tf.keras.layers.Dropout(0.5),
         tf.keras.layers.Dense(self.num_classes, activation='softmax'),
     ])
-
-    return model
 
   def compute_loss(self, targets, predictions, loss_fn, batch_size):
     """Compute average loss."""
@@ -248,11 +246,7 @@ class CustomMnistBenchmark(tf.test.Benchmark):
       exp_per_sec_list.append(total_num_examples / (end_time - t2))
       avg_epoch_time_list.append((end_time - t2) / epochs)
 
-    metrics = []
-    metrics.append({
-        'name': 'avg_epoch_time',
-        'value': np.mean(avg_epoch_time_list)
-    })
+    metrics = [{'name': 'avg_epoch_time', 'value': np.mean(avg_epoch_time_list)}]
     metrics.append({'name': 'exp_per_sec', 'value': np.mean(exp_per_sec_list)})
     metrics.append({'name': 'warmup_time', 'value': np.mean(warmup_time_list)})
     metrics.append({

@@ -35,7 +35,7 @@ class ModelCheckpointTest(tf.test.TestCase, parameterized.TestCase):
     train_ds, _ = multi_worker_testing_utils.mnist_synthetic_dataset(64, 2)
     model = multi_worker_testing_utils.get_mnist_model((28, 28, 1))
     saving_dir = self.get_temp_dir()
-    saving_filepath = os.path.join(saving_dir, 'checkpoint.' + file_format)
+    saving_filepath = os.path.join(saving_dir, f'checkpoint.{file_format}')
     callbacks_list = [
         callbacks.ModelCheckpoint(
             filepath=saving_filepath, save_weights_only=save_weights_only)

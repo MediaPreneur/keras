@@ -30,8 +30,7 @@ def checkpoint_exists(filepath):
   if filepath.endswith('.h5'):
     return tf.io.gfile.exists(filepath)
   tf_saved_model_exists = tf.io.gfile.exists(filepath)
-  tf_weights_only_checkpoint_exists = tf.io.gfile.exists(
-      filepath + '.index')
+  tf_weights_only_checkpoint_exists = tf.io.gfile.exists(f'{filepath}.index')
   return tf_saved_model_exists or tf_weights_only_checkpoint_exists
 
 
@@ -60,7 +59,7 @@ def _model_setup(test_obj, file_format):
   # Pass saving_filepath from the parent thread to ensure every worker has the
   # same filepath to save.
   saving_filepath = os.path.join(test_obj.get_temp_dir(),
-                                 'checkpoint.' + file_format)
+                                 f'checkpoint.{file_format}')
   return model, saving_filepath, train_ds, steps
 
 
@@ -317,9 +316,8 @@ class KerasCallbackMultiProcessTest(parameterized.TestCase, tf.test.TestCase):
       model, _, train_ds, steps = _model_setup(test_obj, file_format='')
       num_epoch = 2
 
-      saving_filepath = os.path.join(
-          test_obj.get_temp_dir(),
-          'logfile_%s' % (get_tf_config_task()['type']))
+      saving_filepath = os.path.join(test_obj.get_temp_dir(),
+                                     f"logfile_{get_tf_config_task()['type']}")
 
       saving_filepath_for_temp = os.path.join(saving_filepath, 'workertemp_1')
       os.mkdir(saving_filepath)

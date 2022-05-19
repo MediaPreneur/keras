@@ -320,51 +320,47 @@ def STEM(
 
     # First stem block
     x = Conv2DFixedPadding(
-        filters=32,
-        kernel_size=3,
-        strides=2,
-        name=name + "_stem_conv_1"
-    )(inputs)
+        filters=32, kernel_size=3, strides=2, name=f"{name}_stem_conv_1")(inputs)
     x = layers.BatchNormalization(
         axis=bn_axis,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
-        name=name + "_stem_batch_norm_1",
+        name=f"{name}_stem_batch_norm_1",
     )(x)
-    x = layers.Activation(activation, name=name + "_stem_act_1")(x)
+    x = layers.Activation(activation, name=f"{name}_stem_act_1")(x)
 
     # Second stem block
     x = Conv2DFixedPadding(
-        filters=32, kernel_size=3, strides=1, name=name + "_stem_conv_2")(x)
+        filters=32, kernel_size=3, strides=1, name=f"{name}_stem_conv_2")(x)
     x = layers.BatchNormalization(
         axis=bn_axis,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
-        name=name + "_stem_batch_norm_2",
+        name=f"{name}_stem_batch_norm_2",
     )(x)
-    x = layers.Activation(activation, name=name + "_stem_act_2")(x)
+    x = layers.Activation(activation, name=f"{name}_stem_act_2")(x)
 
     # Final Stem block:
     x = Conv2DFixedPadding(
-        filters=64, kernel_size=3, strides=1, name=name + "_stem_conv_3")(x)
+        filters=64, kernel_size=3, strides=1, name=f"{name}_stem_conv_3")(x)
     x = layers.BatchNormalization(
         axis=bn_axis,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
-        name=name + "_stem_batch_norm_3",
+        name=f"{name}_stem_batch_norm_3",
     )(x)
-    x = layers.Activation(activation, name=name + "_stem_act_3")(x)
+    x = layers.Activation(activation, name=f"{name}_stem_act_3")(x)
 
     # Replace stem max pool:
     x = Conv2DFixedPadding(
-        filters=64, kernel_size=3, strides=2, name=name + "_stem_conv_4")(x)
+        filters=64, kernel_size=3, strides=2, name=f"{name}_stem_conv_4")(x)
     x = layers.BatchNormalization(
         axis=bn_axis,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
-        name=name + "_stem_batch_norm_4",
+        name=f"{name}_stem_batch_norm_4",
     )(x)
-    x = layers.Activation(activation, name=name + "_stem_act_4")(x)
+    x = layers.Activation(activation, name=f"{name}_stem_act_4")(x)
     return x
 
   return apply
@@ -381,12 +377,9 @@ def SE(in_filters: int,
     name = f"se_{counter}"
 
   def apply(inputs):
-    x = layers.GlobalAveragePooling2D(name=name + "_se_squeeze")(inputs)
-    if bn_axis == 1:
-      se_shape = (x.shape[-1], 1, 1)
-    else:
-      se_shape = (1, 1, x.shape[-1])
-    x = layers.Reshape(se_shape, name=name + "_se_reshape")(x)
+    x = layers.GlobalAveragePooling2D(name=f"{name}_se_squeeze")(inputs)
+    se_shape = (x.shape[-1], 1, 1) if bn_axis == 1 else (1, 1, x.shape[-1])
+    x = layers.Reshape(se_shape, name=f"{name}_se_reshape")(x)
 
     num_reduced_filters = max(1, int(in_filters * 4 * se_ratio))
 
@@ -398,21 +391,21 @@ def SE(in_filters: int,
         padding="same",
         use_bias=True,
         activation="relu",
-        name=name + "_se_reduce",
+        name=f"{name}_se_reduce",
     )(x)
 
     x = layers.Conv2D(
-        filters=4 * in_filters * expand_ratio,  # Expand ratio is 1 by default
+        filters=4 * in_filters * expand_ratio,
         kernel_size=[1, 1],
         strides=[1, 1],
         kernel_initializer=CONV_KERNEL_INITIALIZER,
         padding="same",
         use_bias=True,
         activation="sigmoid",
-        name=name + "_se_expand",
+        name=f"{name}_se_expand",
     )(x)
 
-    return layers.multiply([inputs, x], name=name + "_se_excite")
+    return layers.multiply([inputs, x], name=f"{name}_se_excite")
 
   return apply
 
@@ -445,79 +438,74 @@ def BottleneckBlock(
             pool_size=(2, 2),
             strides=(2, 2),
             padding="same",
-            name=name + "_projection_pooling",
+            name=f"{name}_projection_pooling",
         )(inputs)
         shortcut = Conv2DFixedPadding(
             filters=filters_out,
             kernel_size=1,
             strides=1,
-            name=name + "_projection_conv",
+            name=f"{name}_projection_conv",
         )(shortcut)
       else:
         shortcut = Conv2DFixedPadding(
             filters=filters_out,
             kernel_size=1,
             strides=strides,
-            name=name + "_projection_conv",
+            name=f"{name}_projection_conv",
         )(inputs)
 
       shortcut = layers.BatchNormalization(
           axis=bn_axis,
           momentum=bn_momentum,
           epsilon=bn_epsilon,
-          name=name + "_projection_batch_norm",
+          name=f"{name}_projection_batch_norm",
       )(shortcut)
 
     # First conv layer:
     x = Conv2DFixedPadding(
-        filters=filters,
-        kernel_size=1,
-        strides=1,
-        name=name + "_conv_1"
-    )(inputs)
+        filters=filters, kernel_size=1, strides=1, name=f"{name}_conv_1")(inputs)
     x = layers.BatchNormalization(
         axis=bn_axis,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
-        name=name + "batch_norm_1",
+        name=f"{name}batch_norm_1",
     )(x)
-    x = layers.Activation(activation, name=name + "_act_1")(x)
+    x = layers.Activation(activation, name=f"{name}_act_1")(x)
 
     # Second conv layer:
     x = Conv2DFixedPadding(
-        filters=filters, kernel_size=3, strides=strides, name=name + "_conv_2")(
-            x)
+        filters=filters, kernel_size=3, strides=strides,
+        name=f"{name}_conv_2")(x)
     x = layers.BatchNormalization(
         axis=bn_axis,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
-        name=name + "_batch_norm_2",
+        name=f"{name}_batch_norm_2",
     )(x)
-    x = layers.Activation(activation, name=name + "_act_2")(x)
+    x = layers.Activation(activation, name=f"{name}_act_2")(x)
 
     # Third conv layer:
     x = Conv2DFixedPadding(
-        filters=filters * 4, kernel_size=1, strides=1, name=name + "_conv_3")(x)
+        filters=filters * 4, kernel_size=1, strides=1, name=f"{name}_conv_3")(x)
     x = layers.BatchNormalization(
         axis=bn_axis,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
-        name=name + "_batch_norm_3",
+        name=f"{name}_batch_norm_3",
     )(x)
 
     if 0 < se_ratio < 1:
-      x = SE(filters, se_ratio=se_ratio, name=name + "_se")(x)
+      x = SE(filters, se_ratio=se_ratio, name=f"{name}_se")(x)
 
     # Drop connect
     if survival_probability:
       x = layers.Dropout(
-          survival_probability,
-          noise_shape=(None, 1, 1, 1),
-          name=name + "_drop")(x)
+          survival_probability, noise_shape=(None, 1, 1, 1),
+          name=f"{name}_drop")(x)
 
     x = layers.Add()([x, shortcut])
 
-    return layers.Activation(activation, name=name + "_output_act")(x)
+    return layers.Activation(activation, name=f"{name}_output_act")(x)
 
   return apply
 
@@ -549,7 +537,7 @@ def BlockGroup(
         bn_momentum=bn_momentum,
         activation=activation,
         survival_probability=survival_probability,
-        name=name + "_block_0_",
+        name=f"{name}_block_0_",
     )(inputs)
 
     for i in range(1, num_repeats):
@@ -562,7 +550,7 @@ def BlockGroup(
           bn_epsilon=bn_epsilon,
           bn_momentum=bn_momentum,
           survival_probability=survival_probability,
-          name=name + f"_block_{i}_",
+          name=f"{name}_block_{i}_",
       )(x)
     return x
 
@@ -587,11 +575,8 @@ def fixed_padding(inputs, kernel_size):
   pad_beg = pad_total // 2
   pad_end = pad_total - pad_beg
 
-  # Use ZeroPadding as to avoid TFOpLambda layer
-  padded_inputs = layers.ZeroPadding2D(
+  return layers.ZeroPadding2D(
       padding=((pad_beg, pad_end), (pad_beg, pad_end)))(inputs)
-
-  return padded_inputs
 
 
 def ResNetRS(
@@ -672,8 +657,8 @@ def ResNetRS(
     weights = f"{weights}-i{max_input_shape}"
 
   weights_allow_list = [f"imagenet-i{x}" for x in available_weight_variants]
-  if not (weights in {*weights_allow_list, None} or
-          tf.io.gfile.exists(weights)):
+  if weights not in {*weights_allow_list, None
+                     } and not tf.io.gfile.exists(weights):
     raise ValueError(
         "The `weights` argument should be either "
         "`None` (random initialization), `'imagenet'` "
@@ -701,11 +686,8 @@ def ResNetRS(
   if input_tensor is None:
     img_input = layers.Input(shape=input_shape)
   else:
-    if not backend.is_keras_tensor(input_tensor):
-      img_input = layers.Input(tensor=input_tensor, shape=input_shape)
-    else:
-      img_input = input_tensor
-
+    img_input = (input_tensor if backend.is_keras_tensor(input_tensor) else
+                 layers.Input(tensor=input_tensor, shape=input_shape))
   bn_axis = 3 if backend.image_data_format() == "channels_last" else 1
 
   x = img_input
@@ -756,11 +738,10 @@ def ResNetRS(
     imagenet_utils.validate_activation(classifier_activation, weights)
     x = layers.Dense(
         classes, activation=classifier_activation, name="predictions")(x)
-  else:
-    if pooling == "avg":
-      x = layers.GlobalAveragePooling2D(name="avg_pool")(x)
-    elif pooling == "max":
-      x = layers.GlobalMaxPooling2D(name="max_pool")(x)
+  elif pooling == "avg":
+    x = layers.GlobalAveragePooling2D(name="avg_pool")(x)
+  elif pooling == "max":
+    x = layers.GlobalMaxPooling2D(name="max_pool")(x)
 
   # Ensure that the model takes into account
   # any potential predecessors of `input_tensor`.

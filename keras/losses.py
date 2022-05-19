@@ -177,10 +177,11 @@ class Loss:
 
   def _get_reduction(self):
     """Handles `AUTO` reduction cases and returns the reduction value."""
-    if (not self._allow_sum_over_batch_size and
-        tf.distribute.has_strategy() and
-        (self.reduction == losses_utils.ReductionV2.AUTO or
-         self.reduction == losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE)):
+    if (not self._allow_sum_over_batch_size and tf.distribute.has_strategy()
+        and self.reduction in [
+            losses_utils.ReductionV2.AUTO,
+            losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
+        ]):
       raise ValueError(
           'Please use `tf.keras.losses.Reduction.SUM` or '
           '`tf.keras.losses.Reduction.NONE` for loss reduction when losses are '
@@ -246,10 +247,10 @@ class LossFunctionWrapper(Loss):
     return ag_fn(y_true, y_pred, **self._fn_kwargs)
 
   def get_config(self):
-    config = {}
-    for k, v in self._fn_kwargs.items():
-      config[k] = backend.eval(v) if tf_utils.is_tensor_or_variable(v) else v
-
+    config = {
+        k: backend.eval(v) if tf_utils.is_tensor_or_variable(v) else v
+        for k, v in self._fn_kwargs.items()
+    }
     if saving_lib._ENABLED:  # pylint: disable=protected-access
       config['fn'] = generic_utils.get_registered_name(self.fn)
 
@@ -2382,13 +2383,12 @@ huber_loss = huber
 
 
 def is_categorical_crossentropy(loss):
-  result = ((isinstance(loss, CategoricalCrossentropy) or
-             (isinstance(loss, LossFunctionWrapper) and
-              loss.fn == categorical_crossentropy) or
-             (hasattr(loss, '__name__') and
-              loss.__name__ == 'categorical_crossentropy') or
-             (loss == 'categorical_crossentropy')))
-  return result
+  return (isinstance(loss, CategoricalCrossentropy)
+          or (isinstance(loss, LossFunctionWrapper)
+              and loss.fn == categorical_crossentropy)
+          or (hasattr(loss, '__name__')
+              and loss.__name__ == 'categorical_crossentropy')
+          or (loss == 'categorical_crossentropy'))
 
 
 @keras_export('keras.losses.serialize')

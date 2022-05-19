@@ -38,20 +38,15 @@ class MultiWorkerMirroredStrategyTest(tf.test.TestCase, parameterized.TestCase):
     def _model_fn():
       x = layers.Input(shape=(1,), name='input')
       y = layers.Dense(1, name='dense')(x)
-      model = training.Model(x, y)
-      return model
+      return training.Model(x, y)
 
     def _get_dataset():
       inputs = tf.expand_dims(
           tf.constant(range(10)), axis=1)
       targets = tf.expand_dims(
           tf.constant(range(10)), axis=1)
-      # Make global batch size 12 for 2 replicas and a non-repeated dataset
-      # with 10 elements so that we have partial batch
-      dataset = tf.data.Dataset.from_tensor_slices(
-          (inputs, targets)).batch(
-              12, drop_remainder=False)
-      return dataset
+      return tf.data.Dataset.from_tensor_slices((inputs, targets)).batch(
+          12, drop_remainder=False)
 
     with strategy.scope():
       optimizer_fn = gradient_descent_keras.SGD

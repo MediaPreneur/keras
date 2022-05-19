@@ -58,9 +58,9 @@ def compare_single_input_op_to_numpy(keras_op,
   try:
     np.testing.assert_allclose(keras_output, np_output, atol=1e-4)
   except AssertionError:
-    raise AssertionError('Test for op `' + str(keras_op.__name__) + '` failed; '
-                         'Expected ' + str(np_output) + ' but got ' +
-                         str(keras_output))
+    raise AssertionError((
+        (f'Test for op `{str(keras_op.__name__)}' + '` failed; '
+         'Expected ') + str(np_output) + ' but got ') + str(keras_output))
 
 
 def compare_two_inputs_op_to_numpy(keras_op,
@@ -87,9 +87,9 @@ def compare_two_inputs_op_to_numpy(keras_op,
   try:
     np.testing.assert_allclose(keras_output, np_output, atol=1e-4)
   except AssertionError:
-    raise AssertionError('Test for op `' + str(keras_op.__name__) + '` failed; '
-                         'Expected ' + str(np_output) + ' but got ' +
-                         str(keras_output))
+    raise AssertionError((
+        (f'Test for op `{str(keras_op.__name__)}' + '` failed; '
+         'Expected ') + str(np_output) + ' but got ') + str(keras_output))
 
 
 class BackendResetTest(tf.test.TestCase, parameterized.TestCase):
@@ -270,7 +270,7 @@ class BackendUtilsTest(tf.test.TestCase):
     # we cannot test correctness.
     # The message gets correctly printed in practice.
     x = backend.placeholder(shape=())
-    y = backend.print_tensor(x, 'eager=%s' % tf.executing_eagerly())
+    y = backend.print_tensor(x, f'eager={tf.executing_eagerly()}')
     f = backend.function(x, y)
     f(0)
 
@@ -384,18 +384,13 @@ class BackendLinearAlgebraTest(tf.test.TestCase, parameterized.TestCase):
     elif isinstance(axes, tuple):
       axes = list(axes)
     if axes is None:
-      if y.ndim == 2:
-        axes = [x.ndim - 1, y.ndim - 1]
-      else:
-        axes = [x.ndim - 1, y.ndim - 2]
+      axes = [x.ndim - 1, y.ndim - 1] if y.ndim == 2 else [x.ndim - 1, y.ndim - 2]
     if axes[0] < 0:
       axes[0] += x.ndim
     if axes[1] < 0:
       axes[1] += y.ndim
-    result = []
     axes = [axes[0] - 1, axes[1] - 1]
-    for xi, yi in zip(x, y):
-      result.append(np.tensordot(xi, yi, axes))
+    result = [np.tensordot(xi, yi, axes) for xi, yi in zip(x, y)]
     result = np.array(result)
     if result.ndim == 1:
       result = np.expand_dims(result, -1)
@@ -930,9 +925,8 @@ class BackendNNOpsTest(tf.test.TestCase, parameterized.TestCase):
           kernel_sizes = (kernel_size,) * dim
           strides = (stride,) * dim
 
-          output_shape = tuple([
-              (i - kernel_size + stride) // stride for i in input_spatial_shape
-          ])
+          output_shape = tuple(
+              (i - kernel_size + stride) // stride for i in input_spatial_shape)
 
           kernel_shape = (np.prod(output_shape),
                           np.prod(kernel_sizes) * channels_in, filters)

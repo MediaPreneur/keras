@@ -79,10 +79,10 @@ def load_data(label_mode='fine'):
       '85cd44d02ba6437773c5bbd22e183051d648de2e7d6b014e1ef29b855ba677a7')
 
   fpath = os.path.join(path, 'train')
-  x_train, y_train = load_batch(fpath, label_key=label_mode + '_labels')
+  x_train, y_train = load_batch(fpath, label_key=f'{label_mode}_labels')
 
   fpath = os.path.join(path, 'test')
-  x_test, y_test = load_batch(fpath, label_key=label_mode + '_labels')
+  x_test, y_test = load_batch(fpath, label_key=f'{label_mode}_labels')
 
   y_train = np.reshape(y_train, (len(y_train), 1))
   y_test = np.reshape(y_test, (len(y_test), 1))

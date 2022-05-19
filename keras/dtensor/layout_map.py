@@ -101,10 +101,8 @@ class LayoutMap(collections.abc.MutableMapping):
     if key in self._layout_map:
       return self._layout_map[key]
 
-    for k in self._layout_map:
-      if re.match(k, key):
-        return self._layout_map[k]
-    return None
+    return next((self._layout_map[k]
+                 for k in self._layout_map if re.match(k, key)), None)
 
   def __setitem__(self, key, layout):
     if key in self._layout_map:
@@ -294,7 +292,7 @@ def _map_functional_model_variable(model, layout_map):
       # Convert all the ints to string and join with .
       object_path = '.'.join([str(item) for item in path])
       # Also attach the layer name
-      object_path = layer_name + '.' + object_path
+      object_path = f'{layer_name}.{object_path}'
 
       new_variable = _create_dvariable(layout_map, object_path, variable)
       _set_object_by_path(layer, path, new_variable)
@@ -415,10 +413,8 @@ def _create_dvariable(layout_map, object_path, variable):
   variable_name = variable.name
   if variable_name.endswith(':0'):
     variable_name = variable_name[:-2]
-  new_variable = dtensor.DVariable(init_val,
-                                   trainable=variable.trainable,
-                                   name=variable_name)
-  return new_variable
+  return dtensor.DVariable(
+      init_val, trainable=variable.trainable, name=variable_name)
 
 
 def _set_object_by_path(object_to_set, path, value):
@@ -440,11 +436,10 @@ def _set_object_by_path(object_to_set, path, value):
         object_to_set[attr_name] = value
       else:
         setattr(object_to_set, attr_name, value)
+    elif isinstance(attr_name, int):
+      object_to_set = object_to_set[attr_name]
     else:
-      if isinstance(attr_name, int):
-        object_to_set = object_to_set[attr_name]
-      else:
-        object_to_set = getattr(object_to_set, attr_name)
+      object_to_set = getattr(object_to_set, attr_name)
 
 
 def _is_lazy_init_variable(obj):

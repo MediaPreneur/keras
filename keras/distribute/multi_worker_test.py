@@ -160,9 +160,7 @@ class MultiWorkerVerificationCallback(callbacks.Callback):
       # TODO(b/124171024): In between-graph replication, by default only the
       # chief calls callback. Fix this test to cover that, as well as the rare
       # cases where all workers call.
-      worker_call_count = {
-          i: method_count_dict for i in range(0, self._num_worker)
-      }
+      worker_call_count = {i: method_count_dict for i in range(self._num_worker)}
     else:
       # If in-graph, only the first worker calls callback methods.
       worker_call_count = {0: method_count_dict}

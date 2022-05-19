@@ -52,12 +52,10 @@ def generate_benchmark_params_cpu_gpu(*params_list):
   """
   benchmark_params = []
   for params in params_list:
-    benchmark_params.extend([
-        ((param[0] + '_CPU',) + param[1:]) for param in params
-    ])
-    benchmark_params.extend([
-        ((param[0] + '_GPU',) + param[1:]) for param in params
-    ])
+    benchmark_params.extend(
+        [(f'{param[0]}_CPU', ) + param[1:] for param in params])
+    benchmark_params.extend(
+        [(f'{param[0]}_GPU', ) + param[1:] for param in params])
   return benchmark_params
 
 
@@ -67,7 +65,7 @@ def get_keras_examples_metadata(keras_model,
   return {
       'model_name': 'keras_examples',
       'implementation': keras_model + impl,
-      'parameters': 'bs_' + str(batch_size),
+      'parameters': f'bs_{str(batch_size)}',
   }
 
 
@@ -197,16 +195,32 @@ def measure_performance(model_fn,
     exp_per_sec_list.append(total_num_examples / (end_time - t2))
 
   metrics = []
-  metrics.append({'name': 'build_time', 'value': np.mean(build_time_list)})
-  metrics.append({'name': 'compile_time', 'value': np.mean(compile_time_list)})
-  metrics.append({'name': 'startup_time', 'value': np.mean(startup_time_list)})
-  metrics.append({
-      'name': 'avg_epoch_time',
-      'value': np.mean(avg_epoch_time_list)
-  })
-  metrics.append({'name': 'exp_per_sec', 'value': np.mean(exp_per_sec_list)})
-  metrics.append({'name': 'epochs', 'value': epochs})
-
+  metrics.extend((
+      {
+          'name': 'build_time',
+          'value': np.mean(build_time_list)
+      },
+      {
+          'name': 'compile_time',
+          'value': np.mean(compile_time_list)
+      },
+      {
+          'name': 'startup_time',
+          'value': np.mean(startup_time_list)
+      },
+      {
+          'name': 'avg_epoch_time',
+          'value': np.mean(avg_epoch_time_list)
+      },
+      {
+          'name': 'exp_per_sec',
+          'value': np.mean(exp_per_sec_list)
+      },
+      {
+          'name': 'epochs',
+          'value': epochs
+      },
+  ))
   wall_time = np.mean(wall_time_list)
   extras = {
       'distribution_strategy': distribution_strategy,

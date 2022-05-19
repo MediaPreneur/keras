@@ -70,7 +70,7 @@ class LayersTest(test_util.DTensorBaseTest):
                  input_dtype=np.float32):
     args_with_layout = init_args.copy()
     for variable_name, variable_rank in variable_settings.items():
-      args_with_layout[variable_name + '_layout'] = dtensor.Layout.replicated(
+      args_with_layout[f'{variable_name}_layout'] = dtensor.Layout.replicated(
           self.mesh, variable_rank)
 
     layer = layer_cls(**args_with_layout)

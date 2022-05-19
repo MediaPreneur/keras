@@ -102,9 +102,10 @@ def load_data(path='imdb.npz',
   origin_folder = 'https://storage.googleapis.com/tensorflow/tf-keras-datasets/'
   path = get_file(
       path,
-      origin=origin_folder + 'imdb.npz',
+      origin=f'{origin_folder}imdb.npz',
       file_hash=
-      '69664113be75683a8fe16e3ed0ab59fda8886cb3cd7ada244f7d9544e4676b9f')
+      '69664113be75683a8fe16e3ed0ab59fda8886cb3cd7ada244f7d9544e4676b9f',
+  )
   with np.load(path, allow_pickle=True) as f:  # pylint: disable=unexpected-keyword-arg
     x_train, labels_train = f['x_train'], f['y_train']
     x_test, labels_test = f['x_test'], f['y_test']
@@ -182,7 +183,8 @@ def get_word_index(path='imdb_word_index.json'):
   origin_folder = 'https://storage.googleapis.com/tensorflow/tf-keras-datasets/'
   path = get_file(
       path,
-      origin=origin_folder + 'imdb_word_index.json',
-      file_hash='bfafd718b763782e994055a2d397834f')
+      origin=f'{origin_folder}imdb_word_index.json',
+      file_hash='bfafd718b763782e994055a2d397834f',
+  )
   with open(path) as f:
     return json.load(f)

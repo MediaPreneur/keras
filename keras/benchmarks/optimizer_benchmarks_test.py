@@ -32,8 +32,7 @@ def bidirect_imdb_lstm_config():
             x)
     x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64))(x)
     outputs = tf.keras.layers.Dense(1, activation="sigmoid")(x)
-    model = tf.keras.Model(inputs, outputs)
-    return model
+    return tf.keras.Model(inputs, outputs)
 
   (x_train, y_train), _ = tf.keras.datasets.imdb.load_data(num_words=20000)
   x_train = tf.keras.preprocessing.sequence.pad_sequences(x_train, maxlen=200)
